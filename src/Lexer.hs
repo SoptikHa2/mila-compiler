@@ -42,6 +42,9 @@ semicolon = spaces >> char ';' >> return Semicolon
 dot :: Parsec String () Token
 dot = spaces >> char '.' >> return Dot
 
+comma :: Parsec String () Token
+comma = spaces >> char ',' >> return Comma
+
 dollar :: Parsec String () Char
 dollar = spaces >> char '$'
 
@@ -75,11 +78,17 @@ end = spaces >> string "end" >> return End
 kIf :: Parsec String () Token
 kIf = spaces >> string "if" >> return If
 
+kThen :: Parsec String () Token
+kThen = spaces >> string "then" >> return Then
+
 kElse :: Parsec String () Token
 kElse = spaces >> string "else" >> return Else
 
 while :: Parsec String () Token
 while = spaces >> string "while" >> return While
+
+kDo :: Parsec String () Token
+kDo = spaces >> string "do" >> return Do
 
 for :: Parsec String () Token
 for = spaces >> string "for" >> return For
@@ -126,3 +135,6 @@ label = spaces >> do
 comeFrom :: Parsec String () Token
 comeFrom = spaces >> string "comeFrom" >> spaces >>
   ComeFrom <$> identifierStr
+
+nop :: Parsec String () Token
+nop = return NoTok

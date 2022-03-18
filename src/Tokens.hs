@@ -9,6 +9,7 @@ data Token
   | SqLeftParenthesis
   | SqRightParenthesis
   | Colon
+  | Comma
   | Semicolon
   | Dot
   | IntegerLiteral Int
@@ -19,8 +20,10 @@ data Token
   | Begin
   | End
   | If
+  | Then
   | Else
   | While
+  | Do
   | For
   | To
   | DownTo
@@ -35,4 +38,5 @@ data Token
   | OpDiv
   | Label String
   | ComeFrom String
+  | NoTok
   deriving (Show)

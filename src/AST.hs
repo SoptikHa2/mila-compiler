@@ -4,18 +4,19 @@ data Type
     = Integer
     | Float
     | Nil
+    deriving (Show)
 
-type AnnonatedIdentifier = (String, Type)
+type AnnotatedIdentifier = (String, Type)
 
--- program directive name, global variables, list of functions, main
-type Program = (String, [AnnonatedIdentifier], [Function], Statement)
+-- program directive name, list of functions, (main with parameters)
+type Program = (String, [Function], ([AnnotatedIdentifier], Statement))
 
 -- name, parameters, returnType, variables, body
 type Function = (
     String,
-    [AnnonatedIdentifier],
+    [AnnotatedIdentifier],
     Type,
-    [AnnonatedIdentifier],
+    [AnnotatedIdentifier],
     Statement
     )
 
@@ -26,6 +27,7 @@ data Statement
     | WhileLoop Expression Statement
     | Exit
     | ThrowawayResult Expression
+    deriving (Show)
 
 data Expression
     = Literal
@@ -39,4 +41,5 @@ data Expression
     | Lt Expression Expression
     | Gt Expression Expression
     | FunctionCall String [Expression]
+    deriving (Show)
 
