@@ -8,6 +8,7 @@ import qualified Lex.Lexer as Lexer
 
 import Parse.StatementParser
 import Parse.ExpressionParser
+import Data.Maybe
 
 tokenToType :: Token -> Type
 tokenToType IntegerType = Integer
@@ -34,7 +35,9 @@ functionHeader = do
     Lexer.rightParen
     returnType <- dataType
     Lexer.semicolon
-    return (funcName, arguments, returnType)
+    -- optionally: forward keyword
+    -- TODO: saner way to do this
+    try (Lexer.forward >> Lexer.semicolon >> return (funcName, arguments,returnType, True)) <|> (Lexer.nop >> return (funcName, arguments, returnType, False))
 
 -- var n: integer;
 --     f: integer;
@@ -62,13 +65,14 @@ constDeclaration = do
     Lexer.semicolon
     return (ident, val)
 
-parseFunction :: Parsec String () Function
+parseFunction :: Parsec String () (Maybe Function)
 parseFunction = do
-    (name, arguments, returnType) <- functionHeader
+    (name, arguments, returnType, detached) <- functionHeader
     consts <- option [] constDeclarationBlock
     variables <- option [] variableDeclarationBlock
-    body <- statement
-    return (name, arguments, returnType, variables, consts, body)
+    if detached then return Nothing else do
+        body <- statement
+        return $ Just (name, arguments, returnType, variables, consts, body)
 
 main :: Parsec String () ([AnnotatedIdentifier], [ConstIdentifier], Statement)
 main = do
@@ -82,7 +86,7 @@ program = do
     programName <- programHeader
     functions <- many $ try parseFunction
     mainFunc <- main
-    return (programName, functions, mainFunc)
+    return (programName, catMaybes functions, mainFunc)
 
 getAST :: String -> String -> Either Text.Parsec.ParseError Program
 getAST = parse program

@@ -26,6 +26,9 @@ identifier = Identifier <$> identifierStr
 function :: Parsec String () Token
 function = spaces >> string "function" >> return Function
 
+forward :: Parsec String () Token
+forward = spaces >> string "forward" >> return Forward
+
 leftParen :: Parsec String () Token
 leftParen = spaces >> char '(' >> return LeftParenthesis
 

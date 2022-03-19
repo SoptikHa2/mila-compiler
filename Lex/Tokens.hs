@@ -4,6 +4,7 @@ data Token
   = ProgramDirective
   | Identifier String
   | Function
+  | Forward
   | LeftParenthesis
   | RightParenthesis
   | SqLeftParenthesis
