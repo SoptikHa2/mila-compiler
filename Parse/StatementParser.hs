@@ -13,7 +13,7 @@ statement = try condition <|> try whileLoop <|> try assignment <|> try exit <|> 
 block :: Parsec String () Statement
 block = do
     Lexer.begin
-    st <- many statement
+    st <- many (statement <* optionMaybe (try Lexer.semicolon <|> try Lexer.dot))
     Lexer.end
     try Lexer.semicolon <|> try Lexer.dot
     return $ Block st
@@ -23,7 +23,6 @@ assignment = do
     id <- Lexer.identifierStr
     Lexer.assignment
     value <- expression
-    try Lexer.semicolon <|> try Lexer.dot
     return $ Assignment id value
 
 condition :: Parsec String () Statement
@@ -45,10 +44,9 @@ whileLoop = do
     return $ WhileLoop cond body
 
 exit :: Parsec String () Statement
-exit = Lexer.exit >> (try Lexer.semicolon <|> try Lexer.dot) >> return AST.Exit
+exit = Lexer.exit >> return AST.Exit
 
 throwawayResult :: Parsec String () Statement
 throwawayResult = do
     expr <- expression
-    try Lexer.semicolon <|> try Lexer.dot
     return $ ThrowawayResult expr
