@@ -8,15 +8,15 @@ data Type
 
 type AnnotatedIdentifier = (String, Type)
 
--- program directive name, list of functions, (main with parameters)
-type Program = (String, [Function], ([AnnotatedIdentifier], Statement))
+-- program directive name, list of functions, (main with parameters and consts)
+type Program = (String, [Function], ([AnnotatedIdentifier], [(String, ExpLiteral)], Statement))
 
--- name, parameters, returnType, variables, body
 type Function = (
-    String,
-    [AnnotatedIdentifier],
-    Type,
-    [AnnotatedIdentifier],
+    String, -- name
+    [AnnotatedIdentifier], -- parameters
+    Type, -- return type
+    [AnnotatedIdentifier], -- variables
+    [(String, ExpLiteral)], -- consts
     Statement
     )
 

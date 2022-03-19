@@ -39,7 +39,7 @@ functionHeader = do
 -- var n: integer;
 --     f: integer;
 -- var k, h, l: float;
-variableDeclarationBlock = (concat . concat) <$> (many1 (Lexer.var >> many1 variableDeclaration))
+variableDeclarationBlock = try $ (concat . concat) <$> (many1 $ try (Lexer.var >> many1 variableDeclaration))
 
 -- a, b, c: integer;
 variableDeclaration = do
@@ -52,7 +52,7 @@ variableDeclaration = do
 -- const A = 5;
 --       B = 6;
 -- const C = 7;
-constDeclarationBlock = concat <$> many1 (Lexer.const >> many1 constDeclaration)
+constDeclarationBlock = try $ concat <$> (many1 $ try (Lexer.const >> many1 constDeclaration))
 
 -- A=5;
 constDeclaration = do
@@ -64,10 +64,11 @@ constDeclaration = do
 
 parseFunction = do
     header <- functionHeader
-    variables <- variableDeclarationBlock
+    consts <- optional constDeclarationBlock
+    variables <- optional variableDeclarationBlock
     body <- statement
     optionMaybe Lexer.semicolon
-    return (header, variables, body)
+    return (header, variables, consts, body)
 
 main = ([], AST.Exit)
 
