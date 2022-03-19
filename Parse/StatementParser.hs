@@ -6,9 +6,10 @@ import Parse.AST as AST
 import qualified Lex.Lexer as Lexer
 import Parse.ExpressionParser
 import qualified Language.Haskell.TH.Syntax as Lexer
+import qualified Lex.Tokens as Token
 
 statement :: Parsec String () Statement
-statement = try condition <|> try whileLoop <|> try assignment <|> try exit <|> try loopBreak <|> try block <|> try throwawayResult <?> "statement"
+statement = try condition <|> try whileLoop <|> try assignment <|> try exit <|> try loopBreak <|> try label <|> try comeFrom <|> try block <|> try throwawayResult <?> "statement"
 
 block :: Parsec String () Statement
 block = do
@@ -53,3 +54,13 @@ throwawayResult = do
 
 loopBreak :: Parsec String () Statement
 loopBreak = Lexer.break >> return AST.Break
+
+label :: Parsec String () Statement
+label = do
+    Token.Label labelId <- Lexer.label
+    return $ Label labelId
+
+comeFrom :: Parsec String () Statement
+comeFrom = do
+    Token.ComeFrom targetLabel <- Lexer.comeFrom
+    return $ ComeFrom targetLabel

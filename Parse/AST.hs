@@ -28,20 +28,13 @@ data Statement
     | WhileLoop Expression Statement
     | Exit
     | Break
+    | Label String
+    | ComeFrom String
     | ThrowawayResult Expression
     deriving (Show)
 
 data Expression
     = Literal ExpLiteral
-    | Mod Expression Expression
-    | IsEqual Expression Expression
-    | Not Expression
-    | Plus Expression Expression
-    | Minus Expression Expression
-    | Times Expression Expression
-    | Div Expression Expression
-    | Lt Expression Expression
-    | Gt Expression Expression
     | FunctionCall String [Expression]
     | VarRead String
     | Computation ExpArithmetics

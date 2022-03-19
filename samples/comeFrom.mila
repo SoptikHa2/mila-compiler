@@ -1,0 +1,22 @@
+program comingFrom;
+
+var i: integer;
+begin
+    i := 0;
+    labelA:;
+    
+    comeFrom labelA;
+    i := 1;
+    writeln(i);
+    exit;
+
+    comeFrom labelA;
+    i := 2;
+    writeln(i);
+    exit;
+
+    comeFrom labelA;
+    i := 3;
+    writeln(i);
+    exit;
+end.
