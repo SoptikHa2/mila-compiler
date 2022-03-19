@@ -12,11 +12,13 @@ data Token
   | Comma
   | Semicolon
   | Dot
+  | EqualSign
   | IntegerLiteral Int
   | FloatLiteral Float
   | IntegerType
   | FloatType
   | Var
+  | Const
   | Begin
   | End
   | If

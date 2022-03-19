@@ -1,12 +1,13 @@
 module Parser where
 
-import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, Parsec)
+import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, Parsec, optionMaybe)
 import Control.Applicative
 import Tokens
 import AST
-import Lexer
+import qualified Lexer
 
 import StatementParser
+import ExpressionParser
 
 tokenToType :: Token -> Type
 tokenToType IntegerType = Integer
@@ -27,38 +28,45 @@ identifierWithType = do
 
 -- function add (a:integer; b:integer) : integer;
 functionHeader = do
-    funcName <- Lexer.function >> identifierStr
-    leftParen
+    funcName <- Lexer.function >> Lexer.identifierStr
+    Lexer.leftParen
     arguments <- many (try $ identifierWithType <* (try Lexer.semicolon <|> Lexer.nop))
-    rightParen
+    Lexer.rightParen
     returnType <- dataType
-    semicolon
+    Lexer.semicolon
     return (funcName, arguments, returnType)
 
 -- var n: integer;
 --     f: integer;
 -- var k, h, l: float;
-variableDeclarationBlock = (concat . concat) <$> (many1 (var >> many1 variableDeclaration))
+variableDeclarationBlock = (concat . concat) <$> (many1 (Lexer.var >> many1 variableDeclaration))
 
 -- a, b, c: integer;
 variableDeclaration = do
     -- comma separated identifiers of first type ...
     idents <- many1 (try $ Lexer.identifierStr <* (try Lexer.comma <|> Lexer.nop))
     identType <- dataType
-    semicolon
+    Lexer.semicolon
     return (map (\a -> (a, identType)) idents)
 
-expression = semicolon -- TODO
+-- const A = 5;
+--       B = 6;
+-- const C = 7;
+constDeclarationBlock = concat <$> many1 (Lexer.const >> many1 constDeclaration)
 
-
+-- A=5;
+constDeclaration = do
+    ident <- Lexer.identifierStr
+    Lexer.equalSign
+    val <- literal
+    Lexer.semicolon
+    return (ident, val)
 
 parseFunction = do
     header <- functionHeader
     variables <- variableDeclarationBlock
-    begin
-    body <- expression
-    end
-    semicolon
+    body <- statement
+    optionMaybe Lexer.semicolon
     return (header, variables, body)
 
 main = ([], AST.Exit)

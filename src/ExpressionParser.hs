@@ -10,3 +10,5 @@ import Lexer
 expression :: Parsec String () Expression
 expression = return AST.Literal
 
+literal :: Parsec String () Expression
+literal = return AST.Literal

@@ -5,15 +5,20 @@ import Control.Applicative
 
 import Tokens
 
+reservedNames = ["program", "function", "var", "const", "integer", "float", "begin", "end",
+                "if", "then", "else", "while", "do", "for", "to", "downTo", "break", "continue",
+                "exit", "mod", "div", "comeFrom"]
+
 programDirective :: Parsec String () Token
 programDirective = spaces >> string "program" >> return ProgramDirective
 
 identifierStr :: Parsec String () String
-identifierStr = do
+identifierStr = try $ do
   spaces
   lettersOrUnderscores <- many1 (letter <|> char '_')
   alphaNum <- many alphaNum
-  return (lettersOrUnderscores ++ alphaNum)
+  let result = lettersOrUnderscores ++ alphaNum
+  if result `elem` reservedNames then fail ("Identifier cannot be " ++ result) else return result
 
 identifier :: Parsec String () Token
 identifier = Identifier <$> identifierStr
@@ -69,6 +74,9 @@ floatType = spaces >> string "float" >> return FloatType
 var :: Parsec String () Token
 var = spaces >> string "var" >> return Var
 
+const :: Parsec String () Token
+const = spaces >> string "const" >> return Tokens.Const
+
 begin :: Parsec String () Token
 begin = spaces >> string "begin" >> return Begin
 
@@ -110,6 +118,9 @@ exit = spaces >> string "exit" >> return Exit
 
 assignment :: Parsec String () Token
 assignment = spaces >> string ":=" >> return Assignment
+
+equalSign :: Parsec String () Token
+equalSign = spaces >> string "=" >> return EqualSign
 
 opPlus :: Parsec String () Token
 opPlus = spaces >> char '+' >> return OpPlus
