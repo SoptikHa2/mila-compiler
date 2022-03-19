@@ -1,6 +1,6 @@
 module Parser where
 
-import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, Parsec, optionMaybe)
+import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, Parsec, optionMaybe, option)
 import Control.Applicative
 import Tokens
 import AST
@@ -39,7 +39,7 @@ functionHeader = do
 -- var n: integer;
 --     f: integer;
 -- var k, h, l: float;
-variableDeclarationBlock = try $ (concat . concat) <$> (many1 $ try (Lexer.var >> many1 variableDeclaration))
+variableDeclarationBlock = try $ (concat . concat) <$> many1 (try (Lexer.var >> many1 variableDeclaration))
 
 -- a, b, c: integer;
 variableDeclaration = do
@@ -52,28 +52,36 @@ variableDeclaration = do
 -- const A = 5;
 --       B = 6;
 -- const C = 7;
-constDeclarationBlock = try $ concat <$> (many1 $ try (Lexer.const >> many1 constDeclaration))
+constDeclarationBlock = try $ concat <$> many1 (try (Lexer.const >> many1 constDeclaration))
 
 -- A=5;
 constDeclaration = do
     ident <- Lexer.identifierStr
     Lexer.equalSign
-    val <- literal
+    Literal val <- literal
     Lexer.semicolon
     return (ident, val)
 
+parseFunction :: Parsec String () Function
 parseFunction = do
-    header <- functionHeader
-    consts <- optional constDeclarationBlock
-    variables <- optional variableDeclarationBlock
+    (name, arguments, returnType) <- functionHeader
+    consts <- option [] constDeclarationBlock
+    variables <- option [] variableDeclarationBlock
     body <- statement
-    optionMaybe Lexer.semicolon
-    return (header, variables, consts, body)
+    Lexer.semicolon
+    return (name, arguments, returnType, variables, consts, body)
 
-main = ([], AST.Exit)
+main :: Parsec String () ([AnnotatedIdentifier], [ConstIdentifier], Statement)
+main = do
+    consts <- option [] constDeclarationBlock
+    variables <- option [] variableDeclarationBlock
+    body <- statement
+    Lexer.dot
+    return (variables, consts, body)
 
---program = do
---    programName <- programHeader
---    functions <- many func
---    mainFunc <- main
---    return (programName, func, mainFunc)
+program :: Parsec String () Program
+program = do
+    programName <- programHeader
+    functions <- many $ try parseFunction
+    mainFunc <- main
+    return (programName, functions, mainFunc)
