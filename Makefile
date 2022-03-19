@@ -4,10 +4,10 @@ DEPS=$(find . iname '*.hs')
 .DEFAULT_GOAL: compile
 
 compile: $(DEPS)
-	ghc Main.hs
+	ghc MilaCompiler.hs
 
 run: compile
 	./Main
 
 clean:
-	rm -f $$(find . -iname '*.hi' -o -iname '*.o') Main
+	rm -f $$(find . -iname '*.hi' -o -iname '*.o') MilaCompiler
