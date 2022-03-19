@@ -10,8 +10,6 @@ red() {
     echo -e '\e[91m'
 }
 
-make compile
-
 echo "Testing parsing..."
 for file in samples/*; do
     if ./MilaCompiler "$file" >/dev/null; then

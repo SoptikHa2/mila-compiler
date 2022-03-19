@@ -58,7 +58,9 @@ data ExpArithmetics = EParens ExpArithmetics
                     | ELand ExpArithmetics ExpArithmetics
                     | ELor ExpArithmetics ExpArithmetics
                     | ELt ExpArithmetics ExpArithmetics
+                    | ELeq ExpArithmetics ExpArithmetics
                     | EGt ExpArithmetics ExpArithmetics
+                    | EGeq ExpArithmetics ExpArithmetics
                     | ENegate ExpArithmetics
                     | ENot ExpArithmetics
                     | EExp Expression

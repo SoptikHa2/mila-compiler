@@ -10,7 +10,7 @@ import qualified Lex.Lexer as Lexer
 import Text.Parsec.Token
 
 expression :: Parsec String () Expression
-expression = try functionCall <|> try (Computation <$> exprArithm) <|> try variableRead <|> try literal <?> "expression"
+expression = try (Computation <$> exprArithm) <|> try functionCall <|> try variableRead <|> try literal <?> "expression"
 
 expressionWithoutArithmetics :: Parsec String () Expression
 expressionWithoutArithmetics = try functionCall <|> try variableRead <|> try literal <?> "expression"
@@ -54,6 +54,7 @@ arithmTable = [
         [E.Prefix (ENot <$ arithmConsume "not"), E.Prefix (ENegate <$ arithmConsume "-"),
             E.Infix (ELand <$ arithmConsume "and") E.AssocLeft, E.Infix (ELor <$ arithmConsume "or") E.AssocLeft],
         [E.Infix (EEqual <$ arithmConsume "=") E.AssocLeft, E.Infix (ENequal <$ arithmConsume "<>") E.AssocLeft,
+            E.Infix (ELeq <$ arithmConsume "<=") E.AssocLeft, E.Infix (EGeq <$ arithmConsume ">=") E.AssocLeft,
             E.Infix (ELt <$ arithmConsume "<") E.AssocLeft, E.Infix (EGt <$ arithmConsume ">") E.AssocLeft],
         [E.Infix (EMod <$ arithmConsume "mod") E.AssocLeft, E.Infix (EDiv <$ arithmConsume "div") E.AssocLeft,
             E.Infix (EMul <$ arithmConsume "*") E.AssocLeft ],

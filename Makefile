@@ -1,7 +1,10 @@
 DEPS=$(find . iname '*.hs')
 
-.PHONY: compile clean run
+.PHONY: compile clean run test
 .DEFAULT_GOAL: compile
+
+test: compile
+	./test.sh
 
 compile: $(DEPS)
 	ghc MilaCompiler.hs
