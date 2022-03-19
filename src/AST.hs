@@ -30,7 +30,7 @@ data Statement
     deriving (Show)
 
 data Expression
-    = Literal
+    = Literal ExpLiteral
     | Mod Expression Expression
     | IsEqual Expression Expression
     | Not Expression
@@ -41,5 +41,9 @@ data Expression
     | Lt Expression Expression
     | Gt Expression Expression
     | FunctionCall String [Expression]
+    | VarRead String
     deriving (Show)
 
+data ExpLiteral
+    = IntegerLiteral Int
+    deriving (Show)
