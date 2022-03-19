@@ -1,4 +1,4 @@
-module AST where
+module Parse.AST where
 
 data Type
     = Integer

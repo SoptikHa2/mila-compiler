@@ -1,4 +1,4 @@
-module Tokens where
+module Lex.Tokens where
 
 data Token
   = ProgramDirective

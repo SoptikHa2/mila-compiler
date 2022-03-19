@@ -1,17 +1,16 @@
-
-module ExpressionParser where
+module Parse.ExpressionParser where
 
 import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, Parsec, sepBy, (<?>), between)
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Expr as E
 import Control.Applicative
-import Tokens
-import AST
-import qualified Lexer
+import Lex.Tokens as Tokens
+import Parse.AST as AST
+import qualified Lex.Lexer as Lexer
 import Text.Parsec.Token
 
 expression :: Parsec String () Expression
-expression = try functionCall <|> try variableRead <|> try (Computation <$> exprArithm) <|> try literal <?> "expression"
+expression = try functionCall <|> try (Computation <$> exprArithm) <|> try variableRead <|> try literal <?> "expression"
 
 expressionWithoutArithmetics :: Parsec String () Expression
 expressionWithoutArithmetics = try functionCall <|> try variableRead <|> try literal <?> "expression"
@@ -46,17 +45,20 @@ exprArithm :: Parser ExpArithmetics
 exprArithm = E.buildExpressionParser arithmTable arithmTerm
 
 arithmTerm :: Parser ExpArithmetics
-arithmTerm = (EExp <$> expressionWithoutArithmetics) <|> arithmParens
+arithmTerm = (EExp <$> try expressionWithoutArithmetics) <|> try arithmParens
 
 arithmParens :: Parser ExpArithmetics
-arithmParens = EParens <$> between (string "(") (string ")") exprArithm
+arithmParens = EParens <$> between (arithmConsume "(") (arithmConsume ")") exprArithm
 
 arithmTable = [
-        [E.Prefix (ENot <$ string "not"), E.Prefix (ENegate <$ string "-"),
-            E.Infix (ELand <$ string "and") E.AssocLeft, E.Infix (ELor <$ string "or") E.AssocLeft],
-        [E.Infix (EEqual <$ string "=") E.AssocLeft, E.Infix (ENequal <$ string "<>") E.AssocLeft,
-            E.Infix (ELt <$ string "<") E.AssocLeft, E.Infix (EGt <$ string ">") E.AssocLeft],
-        [E.Infix (EMod <$ string "mod") E.AssocLeft, E.Infix (EDiv <$ string "div") E.AssocLeft,
-            E.Infix (EMul <$ string "*") E.AssocLeft ],
-        [E.Infix (EAdd <$ string "+") E.AssocLeft, E.Infix (ESub <$ string "-") E.AssocLeft]
+        [E.Prefix (ENot <$ arithmConsume "not"), E.Prefix (ENegate <$ arithmConsume "-"),
+            E.Infix (ELand <$ arithmConsume "and") E.AssocLeft, E.Infix (ELor <$ arithmConsume "or") E.AssocLeft],
+        [E.Infix (EEqual <$ arithmConsume "=") E.AssocLeft, E.Infix (ENequal <$ arithmConsume "<>") E.AssocLeft,
+            E.Infix (ELt <$ arithmConsume "<") E.AssocLeft, E.Infix (EGt <$ arithmConsume ">") E.AssocLeft],
+        [E.Infix (EMod <$ arithmConsume "mod") E.AssocLeft, E.Infix (EDiv <$ arithmConsume "div") E.AssocLeft,
+            E.Infix (EMul <$ arithmConsume "*") E.AssocLeft ],
+        [E.Infix (EAdd <$ arithmConsume "+") E.AssocLeft, E.Infix (ESub <$ arithmConsume "-") E.AssocLeft]
     ]
+
+arithmConsume :: String -> Parser String
+arithmConsume s = try (spaces >> string s <* spaces)

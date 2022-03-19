@@ -1,9 +1,9 @@
-module Lexer where
+module Lex.Lexer where
 
 import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, Parsec)
-import Control.Applicative
+import Control.Applicative ( (<|>), many )
 
-import Tokens
+import Lex.Tokens
 
 reservedNames = ["program", "function", "var", "const", "integer", "float", "begin", "end",
                 "if", "then", "else", "while", "do", "for", "to", "downTo", "break", "continue",
@@ -75,7 +75,7 @@ var :: Parsec String () Token
 var = spaces >> string "var" >> return Var
 
 const :: Parsec String () Token
-const = spaces >> string "const" >> return Tokens.Const
+const = spaces >> string "const" >> return Const
 
 begin :: Parsec String () Token
 begin = spaces >> string "begin" >> return Begin

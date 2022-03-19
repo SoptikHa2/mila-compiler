@@ -1,13 +1,13 @@
-module Parser where
+module Parse.Parser (getAST) where
 
-import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, Parsec, optionMaybe, option)
+import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, Parsec, optionMaybe, option, parse, ParseError)
 import Control.Applicative
-import Tokens
-import AST
-import qualified Lexer
+import Lex.Tokens
+import Parse.AST
+import qualified Lex.Lexer as Lexer
 
-import StatementParser
-import ExpressionParser
+import Parse.StatementParser
+import Parse.ExpressionParser
 
 tokenToType :: Token -> Type
 tokenToType IntegerType = Integer
@@ -68,7 +68,6 @@ parseFunction = do
     consts <- option [] constDeclarationBlock
     variables <- option [] variableDeclarationBlock
     body <- statement
-    Lexer.semicolon
     return (name, arguments, returnType, variables, consts, body)
 
 main :: Parsec String () ([AnnotatedIdentifier], [ConstIdentifier], Statement)
@@ -76,7 +75,6 @@ main = do
     consts <- option [] constDeclarationBlock
     variables <- option [] variableDeclarationBlock
     body <- statement
-    Lexer.dot
     return (variables, consts, body)
 
 program :: Parsec String () Program
@@ -85,3 +83,6 @@ program = do
     functions <- many $ try parseFunction
     mainFunc <- main
     return (programName, functions, mainFunc)
+
+getAST :: String -> String -> Either Text.Parsec.ParseError Program
+getAST = parse program
