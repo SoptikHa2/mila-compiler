@@ -27,6 +27,7 @@ data Statement
     | Condition Expression Statement (Maybe Statement)
     | WhileLoop Expression Statement
     | Exit
+    | Break
     | ThrowawayResult Expression
     deriving (Show)
 

@@ -8,14 +8,14 @@ import Parse.ExpressionParser
 import qualified Language.Haskell.TH.Syntax as Lexer
 
 statement :: Parsec String () Statement
-statement = try condition <|> try whileLoop <|> try assignment <|> try exit <|> try block <|> try throwawayResult <?> "statement"
+statement = try condition <|> try whileLoop <|> try assignment <|> try exit <|> try loopBreak <|> try block <|> try throwawayResult <?> "statement"
 
 block :: Parsec String () Statement
 block = do
     Lexer.begin
     st <- many (statement <* optionMaybe (try Lexer.semicolon <|> try Lexer.dot))
     Lexer.end
-    try Lexer.semicolon <|> try Lexer.dot
+    optionMaybe (try Lexer.semicolon <|> try Lexer.dot)
     return $ Block st
 
 assignment :: Parsec String () Statement
@@ -50,3 +50,6 @@ throwawayResult :: Parsec String () Statement
 throwawayResult = do
     expr <- expression
     return $ ThrowawayResult expr
+
+loopBreak :: Parsec String () Statement
+loopBreak = Lexer.break >> return AST.Break
