@@ -5,7 +5,6 @@ import Control.Applicative
 import Parse.AST as AST
 import qualified Lex.Lexer as Lexer
 import Parse.ExpressionParser
-import qualified Language.Haskell.TH.Syntax as Lexer
 import qualified Lex.Tokens as Token
 
 statement :: Parsec String () Statement
