@@ -1,4 +1,4 @@
-module Parse.StatementParser where
+module Parse.StatementParser (statement) where
 
 import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, optionMaybe, Parsec, (<?>))
 import Control.Applicative

@@ -1,4 +1,4 @@
-module Parse.ExpressionParser where
+module Parse.ExpressionParser (expression, literal) where
 
 import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, Parsec, sepBy, (<?>), between)
 import Text.Parsec.String (Parser)
