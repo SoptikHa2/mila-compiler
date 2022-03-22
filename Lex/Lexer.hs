@@ -140,15 +140,8 @@ opMod = spaces >> string "mod" >> return OpMod
 opDiv :: Parsec String () Token
 opDiv = spaces >> string "div" >> return OpDiv
 
-label :: Parsec String () Token
-label = spaces >> do
-  idt <- identifierStr
-  char ':'
-  return (Label idt)
-
 comeFrom :: Parsec String () Token
-comeFrom = spaces >> string "comeFrom" >> spaces >>
-  ComeFrom <$> identifierStr
+comeFrom = spaces >> string "comeFrom" >> spaces >> return ComeFrom
 
 nop :: Parsec String () Token
 nop = return NoTok

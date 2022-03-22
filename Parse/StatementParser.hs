@@ -37,7 +37,7 @@ condition = do
 
 whileLoop :: Parsec String () Statement
 whileLoop = do
-    Lexer.while 
+    Lexer.while
     cond <- expression
     Lexer.kDo
     body <- statement
@@ -56,10 +56,10 @@ loopBreak = Lexer.break >> return AST.Break
 
 label :: Parsec String () Statement
 label = do
-    Token.Label labelId <- Lexer.label
-    return $ Label labelId
+    Lexer.colon
+    Label <$> Lexer.identifierStr
 
 comeFrom :: Parsec String () Statement
 comeFrom = do
-    Token.ComeFrom targetLabel <- Lexer.comeFrom
-    return $ ComeFrom targetLabel
+    Lexer.comeFrom
+    ComeFrom <$> Lexer.identifierStr

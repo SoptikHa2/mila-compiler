@@ -39,7 +39,6 @@ data Token
   | OpTimes
   | OpMod
   | OpDiv
-  | Label String
-  | ComeFrom String
+  | ComeFrom
   | NoTok
   deriving (Show)
