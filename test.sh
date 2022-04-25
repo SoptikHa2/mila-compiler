@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 green() {
     echo -e '\e[32m'
@@ -11,8 +12,10 @@ red() {
 }
 
 echo "Testing parsing..."
+cd mila || exit 1
 for file in samples/*; do
-    if ./MilaCompiler "$file" >/dev/null; then
+    echo "$file"
+    if stack run -- "$file" >/dev/null; then
         echo "[$(green)ok$(normal)] $file"
     else
         echo "[$(red)fail$(normal)] $file"
