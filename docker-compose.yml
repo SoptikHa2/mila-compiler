@@ -3,4 +3,4 @@ services:
     build: ./app
     command: make compile
     volumes:
-      - ./app:/app
+      - .:/app

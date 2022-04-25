@@ -1,0 +1,58 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.5.
+--
+-- see: https://github.com/sol/hpack
+
+name:           mila
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/SoptikHa2/mila-compiler#readme>
+homepage:       https://github.com/SoptikHa2/mila-compiler#readme
+bug-reports:    https://github.com/SoptikHa2/mila-compiler/issues
+author:         Petr Šťastný
+maintainer:     stastpe8@fit.cvut.cz
+copyright:      2022 Petr Šťastný
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/SoptikHa2/mila-compiler
+
+library
+  exposed-modules:
+      IR.Generator
+      Lex.Lexer
+      Lex.Tokens
+      Parse.AST
+      Parse.ExpressionParser
+      Parse.Parser
+      Parse.StatementParser
+  other-modules:
+      Paths_mila
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , llvm-hs >=9.0.0 && <9.1
+    , llvm-hs-pure >=9.0.0 && <9.1
+    , parsec >=3.1 && <4
+  default-language: Haskell2010
+
+executable mila-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_mila
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , llvm-hs >=9.0.0 && <9.1
+    , llvm-hs-pure >=9.0.0 && <9.1
+    , mila
+    , parsec >=3.1 && <4
+  default-language: Haskell2010
