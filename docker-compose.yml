@@ -1,0 +1,6 @@
+services:
+  compile:
+    build: ./app
+    command: make compile
+    volumes:
+      - ./app:/app
