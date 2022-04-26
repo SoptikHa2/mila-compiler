@@ -9,8 +9,8 @@ data Type
 type AnnotatedIdentifier = (String, Type)
 type ConstIdentifier = (String, ExpLiteral)
 
--- program directive name, list of functions, (main with parameters and consts)
-type Program = (String, [Function], ([AnnotatedIdentifier], [ConstIdentifier], Statement))
+-- program directive name, list of functions, Main (has to be named 'main' and have return type int)
+type Program = (String, [Function], Function)
 
 type Function = (
     String, -- name

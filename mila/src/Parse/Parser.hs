@@ -74,12 +74,12 @@ parseFunction = do
         body <- statement
         return $ Just (name, arguments, returnType, variables, consts, body)
 
-main :: Parsec String () ([AnnotatedIdentifier], [ConstIdentifier], Statement)
+main :: Parsec String () Function
 main = do
     consts <- option [] constDeclarationBlock
     variables <- option [] variableDeclarationBlock
     body <- statement
-    return (variables, consts, body)
+    return ("main", [], Integer, variables, consts, body)
 
 program :: Parsec String () Program
 program = do
