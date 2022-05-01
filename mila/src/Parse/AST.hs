@@ -3,8 +3,9 @@ module Parse.AST where
 data Type
     = Integer
     | Float
+    | Boolean
     | Nil
-    deriving (Show)
+    deriving (Show, Eq)
 
 type AnnotatedIdentifier = (String, Type)
 type ConstIdentifier = (String, ExpLiteral)

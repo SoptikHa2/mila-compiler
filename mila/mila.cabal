@@ -32,6 +32,7 @@ library
       Parse.ExpressionParser
       Parse.Parser
       Parse.StatementParser
+      StaticAnalysis.TypeCheck
   other-modules:
       Paths_mila
   hs-source-dirs:

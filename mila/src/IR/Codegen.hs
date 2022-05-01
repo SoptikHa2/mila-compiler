@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TupleSections #-}
-module IR.Codegen () where
+module IR.Codegen where
 
 import Data.Word
 import Data.String
@@ -23,18 +23,18 @@ import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Attribute as A
 import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.FloatingPointPredicate as FP
-double :: Type
-double = FloatingPointType DoubleFP
+import qualified LLVM.AST.IntegerPredicate as IP
+import qualified LLVM.AST.Type as Type
 
-integer :: Type
-integer = IntegerType 32
+charPtr :: Type
+charPtr = Type.ptr Type.i8
 
 strToSBS :: String -> ShortByteString
 strToSBS = toShort . pack
 
 -- Boilerplate source: https://www.stephendiehl.com/llvm/
 
-type SymbolTable = [(String, Operand)]
+type SymbolTable = [(String, (Type, Operand))]
 
 -- MODULE STATE
 
@@ -159,7 +159,7 @@ makeBlock (l, (BlockState _ s t)) = BasicBlock l (reverse s) (maketerm t)
     maketerm Nothing = error $ "Block has no terminator: " ++ (show l)
 
 entryBlockName :: String
-entryBlockName = "entry"
+entryBlockName = "main"
 
 emptyBlock :: Int -> BlockState
 emptyBlock i = BlockState i [] Nothing
@@ -193,16 +193,23 @@ terminator trm = do
 
 -- SYMBOL TABLE
 
-assign :: String -> Operand -> Codegen ()
-assign var x = do
+assign :: String -> Type -> Operand -> Codegen ()
+assign var typ x = do
   lcls <- gets symtab
-  modify $ \s -> s { symtab = (var, x) : lcls }
+  modify $ \s -> s { symtab = (var, (typ, x)) : lcls }
 
 getvar :: String -> Codegen Operand
 getvar var = do
   syms <- gets symtab
   case lookup var syms of
-    Just x  -> return x
+    Just x  -> return $ snd x
+    Nothing -> error $ "Local variable not in scope: " ++ show var
+
+gettype :: String -> Codegen Type
+gettype var = do
+  syms <- gets symtab
+  case lookup var syms of
+    Just x  -> return $ fst x
     Nothing -> error $ "Local variable not in scope: " ++ show var
 
 -- References
@@ -212,24 +219,27 @@ local = flip LocalReference
 global ::  Name -> Type -> C.Constant
 global = flip C.GlobalReference
 
-externf :: Name -> Operand
-externf = ConstantOperand . C.GlobalReference double
+extern :: Name -> Type -> Operand
+extern name t = ConstantOperand (global name t)
 
 -- Arithmetic and Constants
-fadd :: Operand -> Operand -> Type -> Codegen Operand
-fadd a b = instr $ FAdd noFastMathFlags a b []
+add :: Operand -> Operand -> Type -> Codegen Operand
+add a b = instr $ FAdd noFastMathFlags a b []
 
-fsub :: Operand -> Operand -> Type -> Codegen Operand
-fsub a b = instr $ FSub noFastMathFlags a b []
+sub :: Operand -> Operand -> Type -> Codegen Operand
+sub a b = instr $ FSub noFastMathFlags a b []
 
-fmul :: Operand -> Operand -> Type -> Codegen Operand
-fmul a b = instr $ FMul noFastMathFlags a b []
+mul :: Operand -> Operand -> Type -> Codegen Operand
+mul a b = instr $ FMul noFastMathFlags a b []
 
-fdiv :: Operand -> Operand -> Type ->Codegen Operand
-fdiv a b = instr $ FDiv noFastMathFlags a b []
+div :: Operand -> Operand -> Type ->Codegen Operand
+div a b = instr $ FDiv noFastMathFlags a b []
 
-fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Type -> Codegen Operand
-fcmp cond a b = instr $ FCmp cond a b []
+fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
+fcmp cond a b = instr ( FCmp cond a b [] ) Type.double
+
+icmp :: IP.IntegerPredicate -> Operand -> Operand -> Codegen Operand
+icmp cond a b = instr ( ICmp cond a b [] ) Type.i32
 
 cons :: C.Constant -> Operand
 cons = ConstantOperand
@@ -250,8 +260,8 @@ alloca ty = flip instr ty $ Alloca ty Nothing 0 []
 store :: Operand -> Operand -> Type -> Codegen Operand
 store ptr val = instr $ Store False ptr val Nothing 0 []
 
-load :: Operand -> Type -> Codegen Operand
-load ptr = instr $ Load False ptr Nothing 0 []
+load :: Operand -> Codegen Operand
+load ptr = flip instr Type.i32 $ Load False ptr Nothing 0 []
 
 -- Control Flow
 br :: Name -> Codegen (Named Terminator)
