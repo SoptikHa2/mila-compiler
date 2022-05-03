@@ -21,11 +21,11 @@ literal = try integerLiteral
 integerLiteral :: Parsec String () Expression
 integerLiteral = do
     res <- Lexer.integerLiteral
-    let num = tokToInt res
+    let num = tokToInteger res
     either fail (return . Literal . AST.IntegerLiteral) num
-    where tokToInt :: Token -> Either String Int
-          tokToInt (Tokens.IntegerLiteral num) = Right num
-          tokToInt _ = Left "Expected integer literal"
+    where tokToInteger :: Token -> Either String Integer
+          tokToInteger (Tokens.IntegerLiteral num) = Right num
+          tokToInteger _ = Left "Expected integer literal"
 
 functionCall :: Parsec String () Expression
 functionCall = do
@@ -52,13 +52,13 @@ arithmParens = EParens <$> between (arithmConsume "(") (arithmConsume ")") exprA
 
 arithmTable = [
         [E.Prefix (ENot <$ arithmConsume "not"), E.Prefix (ENegate <$ arithmConsume "-"),
-            E.Infix (ELand <$ arithmConsume "and") E.AssocLeft, E.Infix (ELor <$ arithmConsume "or") E.AssocLeft],
-        [E.Infix (EEqual <$ arithmConsume "=") E.AssocLeft, E.Infix (ENequal <$ arithmConsume "<>") E.AssocLeft,
-            E.Infix (ELeq <$ arithmConsume "<=") E.AssocLeft, E.Infix (EGeq <$ arithmConsume ">=") E.AssocLeft,
-            E.Infix (ELt <$ arithmConsume "<") E.AssocLeft, E.Infix (EGt <$ arithmConsume ">") E.AssocLeft],
-        [E.Infix (EMod <$ arithmConsume "mod") E.AssocLeft, E.Infix (EDiv <$ arithmConsume "div") E.AssocLeft,
-            E.Infix (EMul <$ arithmConsume "*") E.AssocLeft ],
-        [E.Infix (EAdd <$ arithmConsume "+") E.AssocLeft, E.Infix (ESub <$ arithmConsume "-") E.AssocLeft]
+            E.Infix (EBinOp ELand <$ arithmConsume "and") E.AssocLeft, E.Infix (EBinOp ELor <$ arithmConsume "or") E.AssocLeft],
+        [E.Infix (EBinOp EEqual <$ arithmConsume "=") E.AssocLeft, E.Infix (EBinOp ENequal <$ arithmConsume "<>") E.AssocLeft,
+            E.Infix (EBinOp ELeq <$ arithmConsume "<=") E.AssocLeft, E.Infix (EBinOp EGeq <$ arithmConsume ">=") E.AssocLeft,
+            E.Infix (EBinOp ELt <$ arithmConsume "<") E.AssocLeft, E.Infix (EBinOp EGt <$ arithmConsume ">") E.AssocLeft],
+        [E.Infix (EBinOp EMod <$ arithmConsume "mod") E.AssocLeft, E.Infix (EBinOp EDiv <$ arithmConsume "div") E.AssocLeft,
+            E.Infix (EBinOp EMul <$ arithmConsume "*") E.AssocLeft ],
+        [E.Infix (EBinOp EAdd <$ arithmConsume "+") E.AssocLeft, E.Infix (EBinOp ESub <$ arithmConsume "-") E.AssocLeft]
     ]
 
 arithmConsume :: String -> Parser String

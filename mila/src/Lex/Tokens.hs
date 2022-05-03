@@ -14,7 +14,7 @@ data Token
   | Semicolon
   | Dot
   | EqualSign
-  | IntegerLiteral Int
+  | IntegerLiteral Integer
   | FloatLiteral Float
   | IntegerType
   | FloatType

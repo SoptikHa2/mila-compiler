@@ -42,24 +42,16 @@ data Expression
     deriving (Show)
 
 data ExpArithmetics = EParens ExpArithmetics
-                    | EAdd ExpArithmetics ExpArithmetics
-                    | ESub ExpArithmetics ExpArithmetics
-                    | EMul ExpArithmetics ExpArithmetics
-                    | EDiv ExpArithmetics ExpArithmetics
-                    | EMod ExpArithmetics ExpArithmetics
-                    | EEqual ExpArithmetics ExpArithmetics
-                    | ENequal ExpArithmetics ExpArithmetics
-                    | ELand ExpArithmetics ExpArithmetics
-                    | ELor ExpArithmetics ExpArithmetics
-                    | ELt ExpArithmetics ExpArithmetics
-                    | ELeq ExpArithmetics ExpArithmetics
-                    | EGt ExpArithmetics ExpArithmetics
-                    | EGeq ExpArithmetics ExpArithmetics
+                    | EBinOp ExpBinOp ExpArithmetics ExpArithmetics
                     | ENegate ExpArithmetics
                     | ENot ExpArithmetics
                     | EExp Expression
                     deriving (Show)
 
+data ExpBinOp = EAdd | ESub | EMul | EDiv | EMod | EEqual | ENequal
+              | ELand | ELor | ELt | ELeq | EGt | EGeq
+              deriving (Show)
+
 data ExpLiteral
-    = IntegerLiteral Int
+    = IntegerLiteral Integer
     deriving (Show)
