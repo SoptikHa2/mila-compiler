@@ -1,4 +1,4 @@
-module IR.Emit () where
+module IR.Emit (emitIR) where
 
 import IR.Codegen
 import qualified Parse.AST as AST
@@ -20,48 +20,9 @@ typeToLLVM AST.Nil     = Type.void
 annotatedIdentifierToLLVM :: AST.AnnotatedIdentifier -> (LLVM.AST.Type, LLVM.AST.Name)
 annotatedIdentifierToLLVM (str, typ) = (typeToLLVM typ, LLVM.AST.mkName str)
 
-codegenProg :: AST.Program -> LLVM ()
-codegenProg (name, funcs, main@(_, _, _, vars, consts, body)) =
-    define Type.i32 "main" [] blks
-    where
-        blks = createBlocks $ execCodegen $ do
-            entry <- addBlock entryBlockName 
-            setBlock entry
-            codegenStatement body >>= ret
-            mapM_ codegenFunc funcs
+emitIR :: AST.Program -> IO BS.ByteString
+emitIR = modToIR . codegenProgram
 
-codegenFunc :: AST.Function -> LLVM ()
-codegenFunc (name, params, retType, vars, consts, body) =
-    define (typeToLLVM retType) name args bls
-    where
-        args = map annotatedIdentifierToLLVM params
-        bls = createBlocks $ execCodegen $ do
-            entry <- addBlock entryBlockName
-            setBlock entry
-            forM_ params $ \(name, typ) -> do
-                var <- alloca (typeToLLVM typ)
-                store var (local (LLVM.AST.mkName name) (typeToLLVM typ)) (typeToLLVM typ)
-                assign name (gettype name) var
-            codegenStatement body >>= ret
-        
-codegenExpr :: AST.Expression  -> Codegen LLVM.AST.Operand
-codegenExpr (AST.VarRead str) = getvar str >>= load
-
-codegenStatement :: AST.Statement -> Codegen LLVM.AST.Operand
-codegenStatement _ = pure $ int32 (fromIntegral 42)
-
---
---emitProg :: AST.Program -> LLVM.AST.Module
---emitProg prog@(name, funcs, main) = 
---    flip evalState (LLVM)
---        $ buildModuleT ( strToSBS name )
---        $ do
---            print <- externVarArgs (LLVM.AST.mkName "printf") [charStar] integer
---            assign "print" print
-
-emit :: LLVM.AST.Module -> IO BS.ByteString 
-emit mod = withContext $ \context ->
+modToIR :: LLVM.AST.Module -> IO BS.ByteString 
+modToIR mod = withContext $ \context ->
     withModuleFromAST context mod moduleLLVMAssembly
-
---generateIR :: AST.Program -> IO BS.ByteString
---generateIR _ = emit test
