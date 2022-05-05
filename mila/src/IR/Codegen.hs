@@ -1,5 +1,4 @@
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecursiveDo #-}
@@ -121,7 +120,6 @@ codegenFunctionDef f@(name, params, retType, _, _, _) =
 codegenFunc :: Function -> LLVM ()
 codegenFunc f@(name, args, retType, vars, consts, body) = mdo
   -- forward reference: to allow recursive calls
-  registerOperand (trace ("registering " ++ '.':name ++ " as function") '.':name) function
 
   -- set function as currently working with
   setFunctionEnv f
@@ -226,9 +224,8 @@ codegenExpr (FunctionCall fname params) = do
       then
         extractPtr param
       else codegenExpr param )) (zip params [0..])
-  f  <- gets ((M.! trace ("calling " ++ ('.':fname)) ('.':fname)) . operands)
-  !fp <- gets ((M.! fname) . functions)
-  L.call (trace (show fp) fp) ps
+  fp <- gets ((M.! fname) . functions)
+  L.call fp ps
   where
     extractPtr exp@(VarRead vname) = gets ((M.! vname) . operands)
     extractPtr exp@(Computation arith) = extractPtrFromArith arith
@@ -287,7 +284,6 @@ codegenArithm (EExp expr) = codegenExpr expr
 codegenBuildIn :: (String, [AST.Type], AST.Type) -> LLVM ()
 codegenBuildIn (name, args, retty) = do
   func <- L.extern (mkName name) args retty
-  registerOperand (trace ("codegen builtin: " ++ ('.':name)) ('.':name)) func
   registerFunction name retty args
 
 -- generate wrapper program
