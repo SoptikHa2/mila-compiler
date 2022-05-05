@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 module Parse.Parser (getAST) where
 
 import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, Parsec, optionMaybe, option, parse, ParseError)
@@ -29,11 +30,12 @@ identifierWithType = do
 
 -- function add (a:integer; b:integer) : integer;
 functionHeader = do
-    funcName <- Lexer.function >> Lexer.identifierStr
+    funcType <- try Lexer.function <|> try Lexer.procedure
+    funcName <- Lexer.identifierStr
     Lexer.leftParen
     arguments <- many (try $ identifierWithType <* (try Lexer.semicolon <|> Lexer.nop))
     Lexer.rightParen
-    returnType <- dataType
+    returnType <- if funcType == Lex.Tokens.Function then dataType else pure Nil
     Lexer.semicolon
     -- optionally: forward keyword
     -- TODO: saner way to do this
@@ -42,7 +44,7 @@ functionHeader = do
 -- var n: integer;
 --     f: integer;
 -- var k, h, l: float;
-variableDeclarationBlock = try $ (concat . concat) <$> many1 (try (Lexer.var >> many1 variableDeclaration))
+variableDeclarationBlock = try $ concat . concat <$> many1 (try (Lexer.var >> many1 variableDeclaration))
 
 -- a, b, c: integer;
 variableDeclaration = do
@@ -50,7 +52,7 @@ variableDeclaration = do
     idents <- many1 (try $ Lexer.identifierStr <* (try Lexer.comma <|> Lexer.nop))
     identType <- dataType
     Lexer.semicolon
-    return (map (\a -> (a, identType)) idents)
+    return (map (, identType) idents)
 
 -- const A = 5;
 --       B = 6;

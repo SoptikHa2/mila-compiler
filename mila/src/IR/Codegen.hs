@@ -1,8 +1,8 @@
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecursiveDo #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BlockArguments #-}
 module IR.Codegen (codegenProgram)
@@ -37,9 +37,10 @@ import Data.ByteString.Char8 (pack)
 import Data.ByteString.Short (ShortByteString, toShort)
 import Data.Maybe
 import Debug.Trace
+import qualified LLVM.AST.AddrSpace
 
 -- When using the IRBuilder, both functions and variables have the type Operand
-data Env = Env { operands :: M.Map String Operand }
+data Env = Env { operands :: M.Map String Operand, function :: Function, functions :: M.Map String Operand }
   deriving (Eq, Show)
 
 -- LLVM and Codegen type synonyms allow us to emit module definitions and basic
@@ -53,8 +54,8 @@ milaStdlib =
   [
     ("write",   [AST.i32],          AST.void),
     ("writeln", [AST.i32],          AST.void),
-    ("readln",  [],                 AST.i32),
-    ("dec",     [AST.ptr AST.i32],  AST.i32)
+    ("readln",  [AST.ptr AST.i32],  AST.i32),
+    ("dec",     [AST.ptr AST.i32],  AST.void)
   ]
 
 hasPtrArg :: String -> Int -> Bool
@@ -72,6 +73,19 @@ hasPtrArg str = hasPtrArg' milaStdlib str
 registerOperand :: MonadState Env m => String -> Operand -> m ()
 registerOperand name op =
   modify $ \env -> env { operands = M.insert name op (operands env) }
+
+registerFunction :: MonadState Env m => String -> AST.Type -> [AST.Type] -> m ()
+registerFunction fname fRetType fArgTypes =
+  modify $ \env -> env { functions = M.insert fname fType (functions env) }
+  where
+    fType = AST.ConstantOperand $ C.GlobalReference fptp (mkName fname)
+    fptp = AST.PointerType (AST.FunctionType fRetType fArgTypes False) (LLVM.AST.AddrSpace.AddrSpace 0)
+
+setFunctionEnv :: MonadState Env m => Function -> m ()
+setFunctionEnv fun = modify $ \env -> env { function = fun }
+
+getCurrentFunction :: MonadState Env m => m Function
+getCurrentFunction = gets function
 
 ltypeOfTyp :: Type -> AST.Type
 ltypeOfTyp Nil = AST.void
@@ -100,10 +114,17 @@ mkTerminator instr = do
   check <- L.hasTerminator
   unless check instr
 
+codegenFunctionDef :: Function -> LLVM ()
+codegenFunctionDef f@(name, params, retType, _, _, _) = 
+  registerFunction name (ltypeOfTyp retType) (map (ltypeOfTyp . snd) params)
+
 codegenFunc :: Function -> LLVM ()
 codegenFunc f@(name, args, retType, vars, consts, body) = mdo
   -- forward reference: to allow recursive calls
   registerOperand (trace ("registering " ++ '.':name ++ " as function") '.':name) function
+
+  -- set function as currently working with
+  setFunctionEnv f
   -- define body itself inside `locally` to prevent local variables from escaping scope
   function <- locally $ do
     let retty = ltypeOfTyp retType
@@ -131,11 +152,13 @@ codegenFunc f@(name, args, retType, vars, consts, body) = mdo
         addr <- L.alloca (ltypeFromLiteral lit) Nothing 0
         L.store addr 0 (literalOperand lit)
         registerOperand (trace ("registering const " ++ pname) pname) addr
-      -- Add 'return variable'
-      retVarAddr <- L.alloca(ltypeOfTyp retType) Nothing 0
-      registerOperand name retVarAddr
+      -- Add 'return variable' (if not procedure)
+      if retType /= Nil then do
+        retVarAddr <- L.alloca(ltypeOfTyp retType) Nothing 0
+        registerOperand name retVarAddr
+      else do pure ()
       -- Generate body itself
-      codegenStatement name body
+      codegenStatement body
       retVar <- codegenExpr (VarRead name)
       L.ret retVar
 
@@ -144,63 +167,68 @@ literalOperand :: ExpLiteral -> Operand
 literalOperand (IntegerLiteral val) = L.int32 val
 
 -- statements
-codegenStatement :: String -> Statement -> Codegen ()
+codegenStatement :: Statement -> Codegen ()
 -- block
-codegenStatement fnName (Block stmts) = mapM_ (codegenStatement fnName) stmts
+codegenStatement (Block stmts) = mapM_ codegenStatement stmts
 -- assignment
-codegenStatement _ (Assignment target expr) = do
+codegenStatement (Assignment target expr) = do
   rTarget <- gets ((M.! trace ("reading " ++ target ++ " for write") target) . operands)
   rExpr <- codegenExpr expr
   L.store rTarget 0 rExpr
 -- if
-codegenStatement fnName (Condition cond truBody falsBody) = mdo
+codegenStatement (Condition cond truBody falsBody) = mdo
   condResult <- codegenExpr cond
   L.condBr condResult thenBlock elseBlock
   thenBlock <- L.block `L.named` strToSBS "then"
   do
-    codegenStatement fnName truBody
+    codegenStatement truBody
     mkTerminator $ L.br mergeBlock
   elseBlock <- L.block `L.named` strToSBS "else"
   do
-    mapM_ (codegenStatement fnName) (maybeToList falsBody)
+    mapM_ codegenStatement (maybeToList falsBody)
     mkTerminator $ L.br mergeBlock
   mergeBlock <- L.block `L.named` strToSBS "merge"
   return ()
 -- throwaway
-codegenStatement _ (ThrowawayResult exp) = M.void (codegenExpr exp)
+codegenStatement (ThrowawayResult exp) = M.void (codegenExpr exp)
 -- while
-codegenStatement fnName (WhileLoop cond body) = mdo
+codegenStatement (WhileLoop cond body) = mdo
   condResult <- codegenExpr cond
   L.condBr condResult whileBlock mergeBlock
   whileBlock <- L.block `L.named` strToSBS "whileLoop"
   do
-    codegenStatement fnName body
+    codegenStatement body
     condResult <- codegenExpr cond
     L.condBr condResult whileBlock mergeBlock
   mergeBlock <- L.block `L.named` strToSBS "merge"
   return ()
 -- exit
-codegenStatement fnName Exit = do
-  retVar <- codegenExpr (VarRead fnName)
-  L.ret retVar
+codegenStatement Exit = do
+  fun <- getCurrentFunction
+  if funType fun == Nil then L.retVoid else do
+    retVar <- codegenExpr (VarRead (funName fun))
+    L.ret retVar
 
-codegenStatement _ expr = error $ "expr not implemented: " ++ show expr
+codegenStatement expr = error $ "expr not implemented: " ++ show expr
 
 -- expressions
 codegenExpr :: Expression -> Codegen Operand
 -- literal
 codegenExpr (Literal eLit) = pure $ literalOperand eLit
 -- variable read
-codegenExpr (VarRead name) = gets ((M.! trace ("reading " ++ name) name) . operands) >>= flip L.load 0
+codegenExpr (VarRead name) = gets ((M.! trace ("reading var " ++ name) name) . operands) >>= flip L.load 0
 -- funciton call
 codegenExpr (FunctionCall fname params) = do
   ps <- mapM (fmap (, []) . ( \(param, nth) ->
+    -- there are some stdlib functions that modify variable, so sometimes we need to
+    -- get a pointer to variable, instead of just it's value. But it is not refelcted in syntax.
     if hasPtrArg fname nth
       then
         extractPtr param
       else codegenExpr param )) (zip params [0..])
   f  <- gets ((M.! trace ("calling " ++ ('.':fname)) ('.':fname)) . operands)
-  trace "call done" (L.call f ps)
+  !fp <- gets ((M.! fname) . functions)
+  L.call (trace (show fp) fp) ps
   where
     extractPtr exp@(VarRead vname) = gets ((M.! vname) . operands)
     extractPtr exp@(Computation arith) = extractPtrFromArith arith
@@ -260,13 +288,15 @@ codegenBuildIn :: (String, [AST.Type], AST.Type) -> LLVM ()
 codegenBuildIn (name, args, retty) = do
   func <- L.extern (mkName name) args retty
   registerOperand (trace ("codegen builtin: " ++ ('.':name)) ('.':name)) func
+  registerFunction name retty args
 
 -- generate wrapper program
 codegenProgram :: Program -> AST.Module
 codegenProgram (modName, funcs, main) =
-  flip evalState (Env { operands = M.empty })
+  flip evalState (Env { operands = M.empty, function = main, functions = M.empty })
   $ L.buildModuleT (strToSBS modName)
   $ do
     mapM_ codegenBuildIn milaStdlib
+    mapM_ codegenFunctionDef (main:funcs)
     mapM_ codegenFunc funcs
     codegenFunc main

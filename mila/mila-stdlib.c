@@ -6,10 +6,8 @@ void write(int param) {
 void writeln(int param) {
     printf("%d\n", param);
 }
-int readln() {
-    int k;
-    scanf("%d", &k);
-    return k;
+int readln(int * k) {
+    return scanf("%d", k);
 }
 void dec(int * k){
     (*k)--;

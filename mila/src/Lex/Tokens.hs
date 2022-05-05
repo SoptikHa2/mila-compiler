@@ -4,6 +4,7 @@ data Token
   = ProgramDirective
   | Identifier String
   | Function
+  | Procedure
   | Forward
   | LeftParenthesis
   | RightParenthesis
@@ -41,4 +42,4 @@ data Token
   | OpDiv
   | ComeFrom
   | NoTok
-  deriving (Show)
+  deriving (Show, Eq)
