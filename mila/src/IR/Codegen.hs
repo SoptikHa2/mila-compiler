@@ -8,6 +8,7 @@ module IR.Codegen (codegenProgram)
 where
 
 import Parse.AST
+import StaticAnalysis.TypeCheck
 
 import qualified LLVM.AST.IntegerPredicate     as IP
 import qualified LLVM.AST.FloatingPointPredicate
@@ -113,8 +114,7 @@ strToSBS :: String -> ShortByteString
 strToSBS = toShort . pack
 
 ltypeFromLiteral :: ExpLiteral -> AST.Type
-ltypeFromLiteral (IntegerLiteral _) = ltypeOfTyp Integer
-ltypeFromLiteral (StringLiteral _) = ltypeOfTyp String
+ltypeFromLiteral = ltypeOfTyp . typeFromLiteral
 
 mkTerminator :: Codegen () -> Codegen ()
 mkTerminator instr = do

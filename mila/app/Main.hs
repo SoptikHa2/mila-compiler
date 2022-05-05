@@ -1,10 +1,12 @@
 import Parse.Parser (getAST)
+import StaticAnalysis.Rewrite (replaceFunc)
 import IR.Emit (emitIR)
 
 import System.Environment
 import System.Exit
 import Data.Either
 import qualified Data.ByteString.Char8 as B
+import Debug.Trace
 
 main :: IO ()
 main = getArgs >>= parseArgs >>= exitWith
@@ -15,8 +17,8 @@ parseArgs [] = do
     return $ ExitFailure 64
 parseArgs [filename] = do
     file <- readFile filename
-    let ast = getAST filename file
-    case ast of
+    let ast = replaceFunc <$> getAST filename file
+    case trace (show ast) ast of
       Left pe -> do
           print pe
           return $ ExitFailure 1
