@@ -54,7 +54,12 @@ milaStdlib =
     ("write",   [AST.i32],          AST.void),
     ("writeln", [AST.i32],          AST.void),
     ("readln",  [AST.ptr AST.i32],  AST.i32),
-    ("dec",     [AST.ptr AST.i32],  AST.void)
+    ("dec",     [AST.ptr AST.i32],  AST.void),
+    ("inc",     [AST.ptr AST.i32],  AST.void),
+
+    ("writed",   [AST.double],          AST.void),
+    ("writelnd", [AST.double],          AST.void),
+    ("readlnd",  [AST.ptr AST.double],  AST.i32)
   ]
 
 hasPtrArg :: String -> Int -> Bool
@@ -157,8 +162,10 @@ codegenFunc f@(name, args, retType, vars, consts, body) = mdo
       else do pure ()
       -- Generate body itself
       codegenStatement body
-      retVar <- codegenExpr (VarRead name)
-      L.ret retVar
+      if retType /= Nil then do
+        retVar <- codegenExpr (VarRead name)
+        L.ret retVar
+      else do L.retVoid 
 
 -- literal
 literalOperand :: ExpLiteral -> Operand
