@@ -4,6 +4,7 @@ data Type
     = Integer
     | Float
     | Boolean
+    | String
     | Nil
     deriving (Show, Eq)
 
@@ -59,4 +60,5 @@ data ExpBinOp = EAdd | ESub | EMul | EDiv | EMod | EEqual | ENequal
 
 data ExpLiteral
     = IntegerLiteral Integer
+    | StringLiteral String
     deriving (Show, Eq)

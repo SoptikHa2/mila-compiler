@@ -17,6 +17,7 @@ data Token
   | EqualSign
   | IntegerLiteral Integer
   | FloatLiteral Float
+  | StringLiteral String
   | IntegerType
   | FloatType
   | Var

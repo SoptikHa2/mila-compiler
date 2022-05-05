@@ -1,6 +1,6 @@
 module Lex.Lexer where
 
-import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, Parsec)
+import Text.Parsec (spaces, alphaNum, string, char, oneOf, noneOf, many1, try, digit, letter, Parsec)
 import Control.Applicative ( (<|>), many )
 
 import Lex.Tokens
@@ -70,6 +70,12 @@ integerLiteral = spaces >> do
   return (IntegerLiteral num)
 
 -- todo: floats
+
+-- todo: escaping
+stringLiteral :: Parsec String () Token
+stringLiteral = do
+  lit <- spaces >> char '\'' >> many (noneOf "'") <* char '\''
+  return $ StringLiteral lit
 
 integerType :: Parsec String () Token
 integerType = spaces >> string "integer" >> return IntegerType

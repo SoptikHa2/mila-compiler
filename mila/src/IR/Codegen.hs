@@ -39,7 +39,8 @@ import Debug.Trace
 import qualified LLVM.AST.AddrSpace
 
 -- When using the IRBuilder, both functions and variables have the type Operand
-data Env = Env { operands :: M.Map String Operand, function :: Function, functions :: M.Map String Operand }
+data Env = Env { operands :: M.Map String Operand, function :: Function,
+                 functions :: M.Map String Operand, strings :: M.Map String Operand }
   deriving (Eq, Show)
 
 -- LLVM and Codegen type synonyms allow us to emit module definitions and basic
@@ -51,15 +52,18 @@ type Codegen = L.IRBuilderT LLVM
 milaStdlib :: [(String, [AST.Type], AST.Type)]
 milaStdlib =
   [
-    ("write",   [AST.i32],          AST.void),
-    ("writeln", [AST.i32],          AST.void),
-    ("readln",  [AST.ptr AST.i32],  AST.i32),
-    ("dec",     [AST.ptr AST.i32],  AST.void),
-    ("inc",     [AST.ptr AST.i32],  AST.void),
+    ("write",   [AST.i32],             AST.void),
+    ("writeln", [AST.i32],             AST.void),
+    ("readln",  [AST.ptr AST.i32],     AST.i32),
+    ("dec",     [AST.ptr AST.i32],     AST.void),
+    ("inc",     [AST.ptr AST.i32],     AST.void),
 
-    ("writed",   [AST.double],          AST.void),
-    ("writelnd", [AST.double],          AST.void),
-    ("readlnd",  [AST.ptr AST.double],  AST.i32)
+    ("writed",   [AST.double],         AST.void),
+    ("writelnd", [AST.double],         AST.void),
+    ("readlnd",  [AST.ptr AST.double], AST.i32),
+
+    ("writes",   [AST.ptr AST.i8],     AST.void),
+    ("writelns", [AST.ptr AST.i8],     AST.void)
   ]
 
 hasPtrArg :: String -> Int -> Bool
@@ -96,6 +100,7 @@ ltypeOfTyp Nil = AST.void
 ltypeOfTyp Integer = AST.i32
 ltypeOfTyp Boolean = AST.i32
 ltypeOfTyp Float = AST.double
+ltypeOfTyp String = AST.ptr AST.i8
 
 locally :: MonadState s m => m a -> m a
 locally computation = do
@@ -104,14 +109,12 @@ locally computation = do
   put oldState
   return result
 
-charStar :: AST.Type
-charStar = AST.ptr AST.i8
-
 strToSBS :: String -> ShortByteString
 strToSBS = toShort . pack
 
 ltypeFromLiteral :: ExpLiteral -> AST.Type
 ltypeFromLiteral (IntegerLiteral _) = ltypeOfTyp Integer
+ltypeFromLiteral (StringLiteral _) = ltypeOfTyp String
 
 mkTerminator :: Codegen () -> Codegen ()
 mkTerminator instr = do
@@ -153,7 +156,8 @@ codegenFunc f@(name, args, retType, vars, consts, body) = mdo
       -- Add consts
       forM_ consts $ \(pname, lit) -> do
         addr <- L.alloca (ltypeFromLiteral lit) Nothing 0
-        L.store addr 0 (literalOperand lit)
+        litop <- literalOperand lit
+        L.store addr 0 litop
         registerOperand (trace ("registering const " ++ pname) pname) addr
       -- Add 'return variable' (if not procedure)
       if retType /= Nil then do
@@ -168,8 +172,17 @@ codegenFunc f@(name, args, retType, vars, consts, body) = mdo
       else do L.retVoid 
 
 -- literal
-literalOperand :: ExpLiteral -> Operand
-literalOperand (IntegerLiteral val) = L.int32 val
+literalOperand :: ExpLiteral -> Codegen Operand
+literalOperand (IntegerLiteral val) = return $ L.int32 val
+literalOperand (StringLiteral str) = do
+  strs <- gets strings
+  case M.lookup str strs of
+    Nothing -> do
+      let nm = mkName (show (M.size strs) <> ".str")
+      op <- L.globalStringPtr str nm
+      modify $ \env -> env { strings = M.insert str (AST.ConstantOperand op) strs }
+      pure (AST.ConstantOperand op)
+    Just op -> return op
 
 -- statements
 codegenStatement :: Statement -> Codegen ()
@@ -219,7 +232,7 @@ codegenStatement expr = error $ "expr not implemented: " ++ show expr
 -- expressions
 codegenExpr :: Expression -> Codegen Operand
 -- literal
-codegenExpr (Literal eLit) = pure $ literalOperand eLit
+codegenExpr (Literal eLit) = literalOperand eLit
 -- variable read
 codegenExpr (VarRead name) = gets ((M.! trace ("reading var " ++ name) name) . operands) >>= flip L.load 0
 -- funciton call
@@ -231,7 +244,7 @@ codegenExpr (FunctionCall fname params) = do
       then
         extractPtr param
       else codegenExpr param )) (zip params [0..])
-  fp <- gets ((M.! fname) . functions)
+  fp <- gets ((M.! trace ("calling function: " ++ fname) fname) . functions)
   L.call fp ps
   where
     extractPtr exp@(VarRead vname) = gets ((M.! vname) . operands)
@@ -270,7 +283,7 @@ codegenArithm (EBinOp op lhs rhs) = do
 -- binary negation (xor with -1)
 codegenArithm (ENegate arithm) = do
   ar' <- codegenArithm arithm
-  let m1 = literalOperand $ IntegerLiteral $ -1
+  m1 <- literalOperand $ IntegerLiteral $ -1
   L.xor ar' m1
 -- logical not (param: %0)
 --  %1 = icmp ne %0, 0
@@ -279,7 +292,8 @@ codegenArithm (ENegate arithm) = do
 --  result is %3
 codegenArithm (ENot arithm) = do
   ar' <- codegenArithm arithm
-  p1 <- L.icmp IP.NE ar' (literalOperand $ IntegerLiteral 0)
+  op <- literalOperand $ IntegerLiteral 0
+  p1 <- L.icmp IP.NE ar' op
   p1asi1 <- L.zext p1 AST.i1
   p2 <- L.xor p1asi1 (L.bit 1)
   L.zext p2 AST.i32
@@ -296,7 +310,8 @@ codegenBuildIn (name, args, retty) = do
 -- generate wrapper program
 codegenProgram :: Program -> AST.Module
 codegenProgram (modName, funcs, main) =
-  flip evalState (Env { operands = M.empty, function = main, functions = M.empty })
+  flip evalState (Env { operands = M.empty, function = main,
+    functions = M.empty, strings = M.empty })
   $ L.buildModuleT (strToSBS modName)
   $ do
     mapM_ codegenBuildIn milaStdlib

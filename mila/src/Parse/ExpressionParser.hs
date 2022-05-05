@@ -7,7 +7,7 @@ import Control.Applicative
 import Lex.Tokens as Tokens
 import Parse.AST as AST
 import qualified Lex.Lexer as Lexer
-import Text.Parsec.Token
+import Text.Parsec.Token hiding (stringLiteral)
 
 expression :: Parsec String () Expression
 expression = try (Computation <$> exprArithm) <|> try functionCall <|> try variableRead <|> try literal <?> "expression"
@@ -16,7 +16,7 @@ expressionWithoutArithmetics :: Parsec String () Expression
 expressionWithoutArithmetics = try functionCall <|> try variableRead <|> try literal <?> "expression"
 
 literal :: Parsec String () Expression
-literal = try integerLiteral
+literal = try integerLiteral <|> try stringLiteral
 
 integerLiteral :: Parsec String () Expression
 integerLiteral = do
@@ -26,6 +26,11 @@ integerLiteral = do
     where tokToInteger :: Token -> Either String Integer
           tokToInteger (Tokens.IntegerLiteral num) = Right num
           tokToInteger _ = Left "Expected integer literal"
+
+stringLiteral :: Parsec String () Expression 
+stringLiteral = do
+    (Tokens.StringLiteral str) <- Lexer.stringLiteral
+    return $ AST.Literal (AST.StringLiteral str)
 
 functionCall :: Parsec String () Expression
 functionCall = do
