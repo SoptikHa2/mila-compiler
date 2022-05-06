@@ -38,6 +38,6 @@ void dec(int * k){
     (*k)--;
 }
 void inc(int * k){
-    (*k)--;
+    (*k)++;
 }
 // TODO: comeFrom

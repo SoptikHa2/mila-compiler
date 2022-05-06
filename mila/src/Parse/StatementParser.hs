@@ -8,7 +8,7 @@ import Parse.ExpressionParser
 import qualified Lex.Tokens as Token
 
 statement :: Parsec String () Statement
-statement = try condition <|> try whileLoop <|> try assignment <|> try exit <|> try loopBreak <|> try label <|> try comeFrom <|> try block <|> try throwawayResult <?> "statement"
+statement = try condition <|> try whileLoop <|> try forLoop <|> try assignment <|> try exit <|> try loopBreak <|> try label <|> try comeFrom <|> try block <|> try throwawayResult <?> "statement"
 
 block :: Parsec String () Statement
 block = do
@@ -40,8 +40,20 @@ whileLoop = do
     Lexer.while
     cond <- expression
     Lexer.kDo
-    body <- statement
-    return $ WhileLoop cond body
+    WhileLoop cond <$> statement
+
+forLoop :: Parsec String () Statement
+forLoop = do
+    Lexer.for
+    asgnTarget <- Lexer.identifierStr
+    Lexer.assignment
+    asgnValue <- expression
+    upOrDown <- try Lexer.to <|> try Lexer.downTo
+    targetValue <- expression
+    Lexer.kDo
+    let opName = if upOrDown == Token.To then "inc" else "dec"
+    let iterationOp = FunctionCall opName [VarRead asgnTarget]
+    ForLoop (asgnTarget, asgnValue) iterationOp targetValue <$> statement
 
 exit :: Parsec String () Statement
 exit = Lexer.exit >> return AST.Exit

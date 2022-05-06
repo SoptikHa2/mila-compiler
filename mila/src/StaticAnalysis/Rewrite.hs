@@ -32,6 +32,9 @@ funcCallReplaceF globalCtx f@(fname, params, typ, vars, consts, body) =
         stmtReplace ctx (Condition cond tru fals) =
             Condition (expReplace ctx cond) (stmtReplace ctx tru) (stmtReplace ctx <$> fals)
         stmtReplace ctx (WhileLoop cond body) = WhileLoop (expReplace ctx cond) (stmtReplace ctx body)
+        stmtReplace ctx (ForLoop (initVar, initExp) iterOp cond body) =
+            ForLoop (initVar, expReplace ctx initExp) (expReplace ctx iterOp)
+                (expReplace ctx cond) (stmtReplace ctx body)
         stmtReplace ctx Exit = Exit
         stmtReplace ctx Break = Break
         stmtReplace ctx l@(Label _) = l

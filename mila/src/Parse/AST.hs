@@ -29,14 +29,26 @@ funType :: Function -> Type
 funType (_, _, typ, _, _, _) = typ
 
 data Statement
+    -- list of statements in block
     = Block [Statement]
+    -- set variable [1:string] to value [2:expression]
     | Assignment String Expression
+    -- if [1:expression] is true, run [2], else run [3]
     | Condition Expression Statement (Maybe Statement)
+    -- while [1] is true, run [2]
     | WhileLoop Expression Statement
+    -- 1. set [1.1] to [1.2]. Then run [4], each time executing [2],
+    -- until [3] is true, then stop
+    | ForLoop (String, Expression) Expression Expression Statement
+    -- return from function
     | Exit
+    -- break out of a loop
     | Break
+    -- jump to all corresponding comefrom's
     | Label String
+    -- define where to jump from labels
     | ComeFrom String
+    -- execute [1], and do nothing with the result
     | ThrowawayResult Expression
     deriving (Show, Eq)
 

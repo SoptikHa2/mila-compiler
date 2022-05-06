@@ -41,7 +41,8 @@ import qualified LLVM.AST.AddrSpace
 
 -- When using the IRBuilder, both functions and variables have the type Operand
 data Env = Env { operands :: M.Map String Operand, function :: Function,
-                 functions :: M.Map String Operand, strings :: M.Map String Operand }
+                 functions :: M.Map String Operand, strings :: M.Map String Operand,
+                 finalizeBlock :: Maybe Name }
   deriving (Eq, Show)
 
 -- LLVM and Codegen type synonyms allow us to emit module definitions and basic
@@ -122,13 +123,11 @@ mkTerminator instr = do
   unless check instr
 
 codegenFunctionDef :: Function -> LLVM ()
-codegenFunctionDef f@(name, params, retType, _, _, _) = 
+codegenFunctionDef f@(name, params, retType, _, _, _) =
   registerFunction name (ltypeOfTyp retType) (map (ltypeOfTyp . snd) params)
 
 codegenFunc :: Function -> LLVM ()
 codegenFunc f@(name, args, retType, vars, consts, body) = mdo
-  -- forward reference: to allow recursive calls
-
   -- set function as currently working with
   setFunctionEnv f
   -- define body itself inside `locally` to prevent local variables from escaping scope
@@ -169,7 +168,7 @@ codegenFunc f@(name, args, retType, vars, consts, body) = mdo
       if retType /= Nil then do
         retVar <- codegenExpr (VarRead name)
         L.ret retVar
-      else do L.retVoid 
+      else do L.retVoid
 
 -- literal
 literalOperand :: ExpLiteral -> Codegen Operand
@@ -211,23 +210,44 @@ codegenStatement (Condition cond truBody falsBody) = mdo
 codegenStatement (ThrowawayResult exp) = M.void (codegenExpr exp)
 -- while
 codegenStatement (WhileLoop cond body) = mdo
-  condResult <- codegenExpr cond
+  condResult <- codegenExpr (trace ("cond: " ++ show cond) cond)
   L.condBr condResult whileBlock mergeBlock
+  -- setup break target
+  prevBlockVar <- gets finalizeBlock
+  modify $ \env -> env { finalizeBlock = Just mergeBlock }
+  -- start executing loop
   whileBlock <- L.block `L.named` strToSBS "whileLoop"
   do
-    codegenStatement body
+    codegenStatement $ trace ("codegen body: " ++ show body) body
     condResult <- codegenExpr cond
-    L.condBr condResult whileBlock mergeBlock
+    let retOp = L.condBr condResult whileBlock mergeBlock
+    modify $ \env -> env { finalizeBlock = prevBlockVar }
+    retOp
   mergeBlock <- L.block `L.named` strToSBS "merge"
   return ()
+-- for
+codegenStatement (ForLoop (var, initVal) iterOp cond body) = mdo
+  codegenStatement (Assignment var initVal)
+  -- we do a little bamboozle here
+  codegenStatement
+    (WhileLoop (Computation (EBinOp ENequal (EExp cond) (EExp (Literal (IntegerLiteral 0))))) (Block (body : [ThrowawayResult iterOp])))
 -- exit
 codegenStatement Exit = do
   fun <- getCurrentFunction
   if funType fun == Nil then L.retVoid else do
     retVar <- codegenExpr (VarRead (funName fun))
     L.ret retVar
-
-codegenStatement expr = error $ "expr not implemented: " ++ show expr
+-- break
+codegenStatement Break = do
+  -- branch to current loop finalize block
+  finBlock <- gets finalizeBlock
+  case finBlock of
+    Nothing -> error "Failed to break, there is no loop to break out of."
+    Just block -> do
+      mkTerminator $ L.br block
+-- TODO: label, comefrom
+codegenStatement (Label _) = error "not implemented"
+codegenStatement (ComeFrom _) = error "not implemented"
 
 -- expressions
 codegenExpr :: Expression -> Codegen Operand
@@ -294,8 +314,8 @@ codegenArithm (ENot arithm) = do
   ar' <- codegenArithm arithm
   op <- literalOperand $ IntegerLiteral 0
   p1 <- L.icmp IP.NE ar' op
-  p1asi1 <- L.zext p1 AST.i1
-  p2 <- L.xor p1asi1 (L.bit 1)
+  --p1asi1 <- L.zext p1 AST.i1
+  p2 <- L.xor p1 (L.bit 1)
   L.zext p2 AST.i32
 
 -- Expr
@@ -311,7 +331,7 @@ codegenBuildIn (name, args, retty) = do
 codegenProgram :: Program -> AST.Module
 codegenProgram (modName, funcs, main) =
   flip evalState (Env { operands = M.empty, function = main,
-    functions = M.empty, strings = M.empty })
+    functions = M.empty, strings = M.empty, finalizeBlock = Nothing })
   $ L.buildModuleT (strToSBS modName)
   $ do
     mapM_ codegenBuildIn milaStdlib
