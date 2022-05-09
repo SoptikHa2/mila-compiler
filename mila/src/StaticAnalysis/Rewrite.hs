@@ -55,4 +55,5 @@ funcCallReplaceF globalCtx f@(fname, params, typ, vars, consts, body) =
             EBinOp op (arithReplace ctx lhs) (arithReplace ctx rhs)
         arithReplace ctx (ENegate arith) = ENegate $ arithReplace ctx arith
         arithReplace ctx (ENot arith) = ENot $ arithReplace ctx arith
+        arithReplace ctx (EMinus arith) = EMinus $ arithReplace ctx arith
         arithReplace ctx (EExp exp) = EExp $ expReplace ctx exp

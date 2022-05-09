@@ -173,6 +173,7 @@ codegenFunc f@(name, args, retType, vars, consts, body) = mdo
 -- literal
 literalOperand :: ExpLiteral -> Codegen Operand
 literalOperand (IntegerLiteral val) = return $ L.int32 val
+literalOperand (DoubleLiteral val) = return $ L.double val
 literalOperand (StringLiteral str) = do
   strs <- gets strings
   case M.lookup str strs of
@@ -317,7 +318,11 @@ codegenArithm (ENot arithm) = do
   --p1asi1 <- L.zext p1 AST.i1
   p2 <- L.xor p1 (L.bit 1)
   L.zext p2 AST.i32
-
+-- numerical negation (* -1)
+codegenArithm (EMinus arithm) = do
+  ar' <- codegenArithm arithm
+  m1 <- literalOperand $ IntegerLiteral $ -1
+  L.mul ar' m1
 -- Expr
 codegenArithm (EExp expr) = codegenExpr expr
 

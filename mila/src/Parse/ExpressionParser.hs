@@ -27,6 +27,11 @@ integerLiteral = do
           tokToInteger (Tokens.IntegerLiteral num) = Right num
           tokToInteger _ = Left "Expected integer literal"
 
+--doubleLiteral :: Parsec String () Expression
+--doubleLiteral = do
+--    res <- Lexer.doubleLiteral
+--    let num = tokToDouble res
+
 stringLiteral :: Parsec String () Expression 
 stringLiteral = do
     (Tokens.StringLiteral str) <- Lexer.stringLiteral
@@ -56,7 +61,7 @@ arithmParens :: Parser ExpArithmetics
 arithmParens = EParens <$> between (arithmConsume "(") (arithmConsume ")") exprArithm
 
 arithmTable = [
-        [E.Prefix (ENot <$ arithmConsume "not"), E.Prefix (ENegate <$ arithmConsume "-"),
+        [E.Prefix (ENot <$ arithmConsume "not"), E.Prefix (ENegate <$ arithmConsume "~"), E.Prefix (EMinus <$ arithmConsume "-"),
             E.Infix (EBinOp ELand <$ arithmConsume "and") E.AssocLeft, E.Infix (EBinOp ELor <$ arithmConsume "or") E.AssocLeft],
         [E.Infix (EBinOp EEqual <$ arithmConsume "=") E.AssocLeft, E.Infix (EBinOp ENequal <$ arithmConsume "<>") E.AssocLeft,
             E.Infix (EBinOp ELeq <$ arithmConsume "<=") E.AssocLeft, E.Infix (EBinOp EGeq <$ arithmConsume ">=") E.AssocLeft,

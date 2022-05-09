@@ -61,8 +61,9 @@ data Expression
 
 data ExpArithmetics = EParens ExpArithmetics
                     | EBinOp ExpBinOp ExpArithmetics ExpArithmetics
-                    | ENegate ExpArithmetics
-                    | ENot ExpArithmetics
+                    | ENegate ExpArithmetics -- binary negation
+                    | EMinus ExpArithmetics -- number * -1
+                    | ENot ExpArithmetics -- logic not
                     | EExp Expression
                     deriving (Show, Eq)
 
@@ -72,5 +73,6 @@ data ExpBinOp = EAdd | ESub | EMul | EDiv | EMod | EEqual | ENequal
 
 data ExpLiteral
     = IntegerLiteral Integer
+    | DoubleLiteral Double
     | StringLiteral String
     deriving (Show, Eq)

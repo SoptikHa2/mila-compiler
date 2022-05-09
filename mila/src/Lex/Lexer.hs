@@ -69,7 +69,9 @@ integerLiteral = spaces >> do
     (try (read <$> ((++) "0o") <$> (char '&' >> (many1 (oneOf "12345670")))))
   return (IntegerLiteral num)
 
--- todo: floats
+--floatLiteral :: Parsec String () Token
+--floatLiteral = spaces >> do
+--  numFirstPart = try (read <$> many1 digit)
 
 -- todo: escaping
 stringLiteral :: Parsec String () Token

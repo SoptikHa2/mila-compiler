@@ -18,6 +18,7 @@ assertExp ctx exp tp =
 inferExp :: Context -> Expression -> Type
 -- literal
 inferExp _ exp@(Literal (IntegerLiteral _)) = Integer
+inferExp _ exp@(Literal (DoubleLiteral _)) = Float
 inferExp _ exp@(Literal (StringLiteral _)) = String
 inferExp ctx (FunctionCall fname _) = case lookup fname ctx of
   Nothing -> error $ "Function " ++ fname ++ " is not known at given context."
@@ -40,7 +41,8 @@ inferArithm ctx arithm@(EBinOp op lhs rhs)
     where
         lhs' = inferArithm ctx lhs
         rhs' = inferArithm ctx rhs
-inferArithm ctx (ENegate arithm) = Integer
+inferArithm ctx (ENegate arithm) = inferArithm ctx arithm
+inferArithm ctx (EMinus arithm) = inferArithm ctx arithm
 inferArithm ctx (ENot arithm) = Integer
 inferArithm ctx (EExp exp) = inferExp ctx exp
 
@@ -49,4 +51,5 @@ annotateConst (str, lit) = (str, typeFromLiteral lit)
 
 typeFromLiteral :: ExpLiteral -> Type
 typeFromLiteral (IntegerLiteral _) = Integer
+typeFromLiteral (DoubleLiteral _) = Float
 typeFromLiteral (StringLiteral _) = String
