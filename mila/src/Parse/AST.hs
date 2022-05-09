@@ -6,6 +6,7 @@ data Type
     | Boolean
     | String
     | Nil
+    | Ptr Type
     deriving (Show, Eq)
 
 type AnnotatedIdentifier = (String, Type)

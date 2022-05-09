@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 module StaticAnalysis.TypeCheck where
 
 import Data.Either
@@ -6,9 +7,34 @@ import Parse.AST
 type Context = [(String, Type)]
 type TypingResult = (Either String Type)
 
+stdFunctionsNotYetResolved = [
+    ("int", Integer),
+    ("float", Double)
+  ]
+
+stdlib =
+  [
+    ("write",   [Integer],             Nil),
+    ("writeln", [Integer],             Nil),
+    ("readln",  [Ptr Integer],         Integer),
+    ("dec",     [Ptr Integer],         Nil),
+    ("inc",     [Ptr Integer],         Nil),
+
+    ("writed",   [Double],             Nil),
+    ("writelnd", [Double],             Nil),
+    ("readlnd",  [Ptr Double],         Integer),
+
+    ("writes",   [String],             Nil),
+    ("writelns", [String],             Nil),
+
+    ("conv_int", [Double],             Integer),
+    ("conv_dbl", [Integer],            Double)
+  ]
+
 initialCtx :: Program -> Function -> Context
 initialCtx prog@(pname, fx, main) f@(fname, params, typ, vars, consts, body) = 
-        globalCtx ++ params ++ vars ++ map annotateConst consts ++ [(fname, typ)]
+        stdFunctionsNotYetResolved ++ (map \(n,_,t)->(n,t)) stdlib ++ globalCtx ++
+        params ++ vars ++ map annotateConst consts ++ [(fname, typ)]
         where
           globalCtx = map (\(fname, _, rtype, _, _, _) -> (fname, rtype)) fx
 

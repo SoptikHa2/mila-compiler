@@ -52,21 +52,7 @@ type LLVM = L.ModuleBuilderT (State Env)
 type Codegen = L.IRBuilderT LLVM
 
 milaStdlib :: [(String, [AST.Type], AST.Type)]
-milaStdlib =
-  [
-    ("write",   [AST.i32],             AST.void),
-    ("writeln", [AST.i32],             AST.void),
-    ("readln",  [AST.ptr AST.i32],     AST.i32),
-    ("dec",     [AST.ptr AST.i32],     AST.void),
-    ("inc",     [AST.ptr AST.i32],     AST.void),
-
-    ("writed",   [AST.double],         AST.void),
-    ("writelnd", [AST.double],         AST.void),
-    ("readlnd",  [AST.ptr AST.double], AST.i32),
-
-    ("writes",   [AST.ptr AST.i8],     AST.void),
-    ("writelns", [AST.ptr AST.i8],     AST.void)
-  ]
+milaStdlib = map (\(n,a,r)->(n, map ltypeOfTyp a, ltypeOfTyp r)) stdlib
 
 hasPtrArg :: String -> Int -> Bool
 hasPtrArg str = hasPtrArg' milaStdlib str
@@ -106,6 +92,7 @@ ltypeOfTyp Integer = AST.i32
 ltypeOfTyp Boolean = AST.i32
 ltypeOfTyp Double = AST.double
 ltypeOfTyp String = AST.ptr AST.i8
+ltypeOfTyp (Ptr t) = AST.ptr $ ltypeOfTyp t
 
 locally :: MonadState s m => m a -> m a
 locally computation = do
@@ -359,7 +346,7 @@ codegenProgram prog@(modName, funcs, main) =
   flip evalState (Env { operands = M.empty, function = main,
     functions = M.empty, strings = M.empty, finalizeBlock = Nothing,
     program = prog })
-  $ L.buildModuleT (strToSBS modName)
+  $ L.buildModuleT (strToSBS  modName)
   $ do
     mapM_ codegenBuildIn milaStdlib
     mapM_ codegenFunctionDef (main:funcs)
