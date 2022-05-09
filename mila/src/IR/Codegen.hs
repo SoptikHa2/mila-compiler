@@ -42,7 +42,7 @@ import qualified LLVM.AST.AddrSpace
 -- When using the IRBuilder, both functions and variables have the type Operand
 data Env = Env { operands :: M.Map String Operand, function :: Function,
                  functions :: M.Map String Operand, strings :: M.Map String Operand,
-                 finalizeBlock :: Maybe Name }
+                 finalizeBlock :: Maybe Name, program :: Program }
   deriving (Eq, Show)
 
 -- LLVM and Codegen type synonyms allow us to emit module definitions and basic
@@ -97,11 +97,14 @@ setFunctionEnv fun = modify $ \env -> env { function = fun }
 getCurrentFunction :: MonadState Env m => m Function
 getCurrentFunction = gets function
 
+getCurrentProgram :: MonadState Env m => m Program
+getCurrentProgram = gets program
+
 ltypeOfTyp :: Type -> AST.Type
 ltypeOfTyp Nil = AST.void
 ltypeOfTyp Integer = AST.i32
 ltypeOfTyp Boolean = AST.i32
-ltypeOfTyp Float = AST.double
+ltypeOfTyp Double = AST.double
 ltypeOfTyp String = AST.ptr AST.i8
 
 locally :: MonadState s m => m a -> m a
@@ -277,30 +280,51 @@ codegenExpr (FunctionCall fname params) = do
 -- arighmetics
 codegenExpr (Computation arithm) = codegenArithm arithm
 
+castToFPArithmCodegen :: ExpArithmetics -> Codegen Operand
+castToFPArithmCodegen arithm = do
+  intCodegen <- codegenArithm arithm
+  -- cast to float
+  L.sitofp intCodegen AST.double
+
 -- arighmetics
 codegenArithm :: ExpArithmetics  -> Codegen Operand
 -- (A)
 codegenArithm (EParens arithm) = codegenArithm arithm
 -- (A `x` B)
 codegenArithm (EBinOp op lhs rhs) = do
-  lhs' <- codegenArithm lhs
-  rhs' <- codegenArithm rhs
+  prog <- getCurrentProgram
+  fun <- getCurrentFunction
+  let initTypecheckingCtx = initialCtx prog fun
+
+  let lhsType = inferArithm initTypecheckingCtx lhs
+  let rhsType = inferArithm initTypecheckingCtx rhs
+
+  -- decide how to codegen left and right side based on types
+  let (isFP, lhs', rhs') = case (lhsType, rhsType) of
+        (Integer, Integer) -> (False, codegenArithm lhs, codegenArithm rhs)
+        (Double, Double) -> (True, codegenArithm lhs, codegenArithm rhs)
+        (Double, Integer) -> (True, codegenArithm lhs, castToFPArithmCodegen rhs)
+        (Integer, Double) -> (True, castToFPArithmCodegen rhs, codegenArithm lhs)
+        (_, _) -> error $ "Unkown types of arithmetics: " ++ show lhsType ++ ", " ++ show rhsType
+
   let fun = case op of
-        EAdd -> L.add
-        ESub -> L.sub
-        EMul -> L.mul
-        EDiv -> L.sdiv -- TODO: float division as well
+        EAdd -> if isFP then L.fadd else L.add
+        ESub -> if isFP then L.fsub else L.sub
+        EMul -> if isFP then L.fmul else L.mul
+        EDiv -> if isFP then L.fdiv else L.sdiv
         EMod -> L.srem
-        -- TODO: Float comparsions as well
-        EEqual -> L.icmp IP.EQ
-        ENequal -> L.icmp IP.NE
-        ELeq -> L.icmp IP.SLE
-        ELt -> L.icmp IP.SLT
-        EGeq -> L.icmp IP.SGE
-        EGt -> L.icmp IP.SGT
+        EEqual -> if isFP then L.fcmp FP.UEQ else L.icmp IP.EQ
+        ENequal -> if isFP then L.fcmp FP.UNE else L.icmp IP.NE
+        ELeq -> if isFP then L.fcmp FP.ULE else L.icmp IP.SLE
+        ELt -> if isFP then L.fcmp FP.ULT else L.icmp IP.SLT
+        EGeq -> if isFP then L.fcmp FP.UGE else L.icmp IP.SGE
+        EGt -> if isFP then L.fcmp FP.UGT else L.icmp IP.SGT
         ELand -> L.and
         ELor -> L.or
-  fun lhs' rhs'
+  
+  lhsCg <- lhs'
+  rhsCg <- rhs'
+  fun lhsCg rhsCg
 -- binary negation (xor with -1)
 codegenArithm (ENegate arithm) = do
   ar' <- codegenArithm arithm
@@ -319,10 +343,7 @@ codegenArithm (ENot arithm) = do
   p2 <- L.xor p1 (L.bit 1)
   L.zext p2 AST.i32
 -- numerical negation (* -1)
-codegenArithm (EMinus arithm) = do
-  ar' <- codegenArithm arithm
-  m1 <- literalOperand $ IntegerLiteral $ -1
-  L.mul ar' m1
+codegenArithm (EMinus arithm) = codegenArithm (EBinOp EMul arithm (EExp $ Literal $ IntegerLiteral $ -1))
 -- Expr
 codegenArithm (EExp expr) = codegenExpr expr
 
@@ -334,9 +355,10 @@ codegenBuildIn (name, args, retty) = do
 
 -- generate wrapper program
 codegenProgram :: Program -> AST.Module
-codegenProgram (modName, funcs, main) =
+codegenProgram prog@(modName, funcs, main) =
   flip evalState (Env { operands = M.empty, function = main,
-    functions = M.empty, strings = M.empty, finalizeBlock = Nothing })
+    functions = M.empty, strings = M.empty, finalizeBlock = Nothing,
+    program = prog })
   $ L.buildModuleT (strToSBS modName)
   $ do
     mapM_ codegenBuildIn milaStdlib

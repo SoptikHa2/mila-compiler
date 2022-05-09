@@ -16,10 +16,10 @@ data Token
   | Dot
   | EqualSign
   | IntegerLiteral Integer
-  | FloatLiteral Float
+  | DoubleLiteral Double
   | StringLiteral String
   | IntegerType
-  | FloatType
+  | DoubleType
   | Var
   | Const
   | Begin

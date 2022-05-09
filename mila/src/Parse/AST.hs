@@ -2,7 +2,7 @@ module Parse.AST where
 
 data Type
     = Integer
-    | Float
+    | Double
     | Boolean
     | String
     | Nil

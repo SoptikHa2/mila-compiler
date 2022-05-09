@@ -16,7 +16,7 @@ expressionWithoutArithmetics :: Parsec String () Expression
 expressionWithoutArithmetics = try functionCall <|> try variableRead <|> try literal <?> "expression"
 
 literal :: Parsec String () Expression
-literal = try integerLiteral <|> try stringLiteral
+literal = try doubleLiteral <|> try integerLiteral <|> try stringLiteral
 
 integerLiteral :: Parsec String () Expression
 integerLiteral = do
@@ -27,10 +27,14 @@ integerLiteral = do
           tokToInteger (Tokens.IntegerLiteral num) = Right num
           tokToInteger _ = Left "Expected integer literal"
 
---doubleLiteral :: Parsec String () Expression
---doubleLiteral = do
---    res <- Lexer.doubleLiteral
---    let num = tokToDouble res
+doubleLiteral :: Parsec String () Expression
+doubleLiteral = do
+    res <- Lexer.doubleLiteral
+    let num = tokToDouble res
+    either fail (return . Literal . AST.DoubleLiteral) num
+    where tokToDouble :: Token -> Either String Double
+          tokToDouble (Tokens.DoubleLiteral num) = Right num
+          tokToDouble _ = Left "Expected double literal"
 
 stringLiteral :: Parsec String () Expression 
 stringLiteral = do

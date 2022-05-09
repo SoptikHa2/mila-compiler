@@ -1,5 +1,4 @@
 import Parse.Parser (getAST)
-import StaticAnalysis.Rewrite (replaceFunc)
 import IR.Emit (emitIR)
 
 import System.Environment
@@ -17,7 +16,7 @@ parseArgs [] = do
     return $ ExitFailure 64
 parseArgs [filename] = do
     file <- readFile filename
-    let ast = replaceFunc <$> getAST filename file
+    let ast = getAST filename file
     case trace (show ast) ast of
       Left pe -> do
           print pe

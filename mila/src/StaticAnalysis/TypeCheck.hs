@@ -6,6 +6,12 @@ import Parse.AST
 type Context = [(String, Type)]
 type TypingResult = (Either String Type)
 
+initialCtx :: Program -> Function -> Context
+initialCtx prog@(pname, fx, main) f@(fname, params, typ, vars, consts, body) = 
+        globalCtx ++ params ++ vars ++ map annotateConst consts ++ [(fname, typ)]
+        where
+          globalCtx = map (\(fname, _, rtype, _, _, _) -> (fname, rtype)) fx
+
 -- check if expression matches given type, throws error otherwise
 assertExp :: Context -> Expression -> Type -> Maybe String
 assertExp ctx exp tp = 
@@ -18,7 +24,7 @@ assertExp ctx exp tp =
 inferExp :: Context -> Expression -> Type
 -- literal
 inferExp _ exp@(Literal (IntegerLiteral _)) = Integer
-inferExp _ exp@(Literal (DoubleLiteral _)) = Float
+inferExp _ exp@(Literal (DoubleLiteral _)) = Double
 inferExp _ exp@(Literal (StringLiteral _)) = String
 inferExp ctx (FunctionCall fname _) = case lookup fname ctx of
   Nothing -> error $ "Function " ++ fname ++ " is not known at given context."
@@ -32,9 +38,9 @@ inferArithm :: Context -> ExpArithmetics -> Type
 inferArithm ctx (EParens arith) = inferArithm ctx arith
 inferArithm ctx arithm@(EBinOp op lhs rhs)
     | op `elem` [EAdd, ESub, EMul, EDiv, EMod] = case (lhs', rhs') of
-        (Float, Integer) -> Float
-        (Integer, Float) -> Float
-        (Float, Float) -> Float
+        (Double, Integer) -> Double
+        (Integer, Double) -> Double
+        (Double, Double) -> Double
         (Integer, Integer) -> Integer
         _ -> error $ "Failed to infer type of " ++ show arithm ++ ". Bad L/R operands type."
     | otherwise = Integer -- logical things
@@ -51,5 +57,5 @@ annotateConst (str, lit) = (str, typeFromLiteral lit)
 
 typeFromLiteral :: ExpLiteral -> Type
 typeFromLiteral (IntegerLiteral _) = Integer
-typeFromLiteral (DoubleLiteral _) = Float
+typeFromLiteral (DoubleLiteral _) = Double
 typeFromLiteral (StringLiteral _) = String

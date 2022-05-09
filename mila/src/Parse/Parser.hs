@@ -13,7 +13,7 @@ import Data.Maybe
 
 tokenToType :: Token -> Type
 tokenToType IntegerType = Integer
-tokenToType FloatType = Float
+tokenToType DoubleType = Double
 tokenToType _ = Nil
 
 -- program factorial;

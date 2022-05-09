@@ -1,0 +1,14 @@
+program wtf;
+
+var
+    i, n: integer;
+begin
+    i := 42;
+    n := 0;
+    while i <> 10 do begin
+        writeln(i);
+        inc(i);
+        inc(n);
+        if n > 20 then break;
+    end;
+end.

@@ -5,9 +5,9 @@ import StaticAnalysis.TypeCheck
 import Control.Monad.State
 
 funcReplacementRules :: String -> [Type] -> String
-funcReplacementRules "write" [Float] = "writed"
+funcReplacementRules "write" [Double] = "writed"
 funcReplacementRules "write" [String] = "writes"
-funcReplacementRules "writeln" [Float] = "writelnd"
+funcReplacementRules "writeln" [Double] = "writelnd"
 funcReplacementRules "writeln" [String] = "writelns"
 funcReplacementRules "int" _ = "conv_int"
 funcReplacementRules "float" _ = "conv_dbl"
@@ -15,17 +15,15 @@ funcReplacementRules str _ = str
 
 replaceFunc :: Program -> Program
 replaceFunc prog@(pname, fx, main) =
-    (pname, map (funcCallReplaceF initctx) fx, funcCallReplaceF initctx main)
+    (pname, map (funcCallReplaceF prog) fx, funcCallReplaceF prog main)
     where
         initctx = map (\(fname, _, rtype, _, _, _) -> (fname, rtype)) fx
 
 -- Replace function calls by it's typed-name equialent
-funcCallReplaceF :: Context -> Function -> Function
-funcCallReplaceF globalCtx f@(fname, params, typ, vars, consts, body) =
-    (fname, params, typ, vars, consts, stmtReplace initialContext body)
+funcCallReplaceF :: Program -> Function -> Function
+funcCallReplaceF prog f@(fname, params, typ, vars, consts, body) =
+    (fname, params, typ, vars, consts, stmtReplace (initialCtx prog f) body)
     where
-        initialContext = globalCtx ++ params ++ vars ++ map annotateConst consts
-
         stmtReplace :: Context -> Statement -> Statement
         stmtReplace ctx (Block xs) = Block $ map (stmtReplace ctx) xs
         stmtReplace ctx (Assignment trg ex) = Assignment trg (expReplace ctx ex)
