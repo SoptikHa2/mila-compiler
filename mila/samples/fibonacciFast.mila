@@ -13,8 +13,7 @@ begin
         exit;
     end;
 
-    nextAvOffset := getSharedInt(0);
-    setSharedInt(0, nextAvOffset+1);
+    nextAvOffset := getAndIncrement(0);
     setSharedInt(nextAvOffset, -1);
     fib := -1;
 

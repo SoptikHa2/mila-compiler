@@ -48,7 +48,7 @@ void inc(int * k){
 int __INTERNAL_segment_id;
 int * __INTERNAL_sharedData = NULL;
 void setupSharedInts(int cnt) {
-    __INTERNAL_segment_id = shmget(IPC_PRIVATE, cnt, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    __INTERNAL_segment_id = shmget(IPC_PRIVATE, sizeof(int)*(cnt), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
     __INTERNAL_sharedData = (int *) shmat(__INTERNAL_segment_id, 0, 0);
 }
 int getSharedInt(int offset) {
@@ -56,6 +56,9 @@ int getSharedInt(int offset) {
 }
 void setSharedInt(int offset, int value) {
     __INTERNAL_sharedData[offset] = value;
+}
+int getAndIncrement(int offset) {
+    return (*(_Atomic int *)((__INTERNAL_sharedData+offset)))++;
 }
 void trashSharedInts() {
     shmdt(__INTERNAL_sharedData);

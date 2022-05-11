@@ -33,6 +33,7 @@ stdlib =
 
     ("setupSharedInts", [Integer],     Nil),
     ("getSharedInt", [Integer],        Integer),
+    ("getAndIncrement", [Integer],     Integer),
     ("setSharedInt",[Integer, Integer],Nil),
     ("trashSharedInts", [],            Nil),
 
