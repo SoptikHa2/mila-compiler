@@ -11,13 +11,20 @@ red() {
     echo -e '\e[91m'
 }
 
-echo "Testing parsing..."
-cd mila || exit 1
-for file in samples/*; do
-    echo "$file"
-    if stack run -- "$file" >/dev/null; then
-        echo "[$(green)ok$(normal)] $file"
+defaultInput="1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+okCnt=0
+badCnt=0
+
+for file in mila/samples/*; do
+    if ./compile.sh "$file" /tmp/curtest >/dev/null; then
+        echo "$(green)Compiled $file$(normal):"
+        /tmp/curtest <<<"$defaultInput" || true
+        okCnt=$((okCnt+1))
     else
-        echo "[$(red)fail$(normal)] $file"
+        echo "$(red)Failed to compile $file$(normal)."
+        badCnt=$((badCnt+1))
     fi
 done
+
+echo "$(green)Passed $okCnt$(normal)."
+echo "$(red)Failed $badCnt$(normal)."

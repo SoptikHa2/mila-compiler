@@ -36,7 +36,6 @@ import           Data.List                      ( find )
 import Data.ByteString.Char8 (pack)
 import Data.ByteString.Short (ShortByteString, toShort)
 import Data.Maybe
-import Debug.Trace
 import qualified LLVM.AST.AddrSpace
 
 -- When using the IRBuilder, both functions and variables have the type Operand
@@ -147,7 +146,7 @@ codegenFunc f@(name, args, retType, vars, consts, body) = mdo
         addr <- L.alloca (ltypeFromLiteral lit) Nothing 0
         litop <- literalOperand lit
         L.store addr 0 litop
-        registerOperand (trace ("registering const " ++ pname) pname) addr
+        registerOperand pname addr
       -- Add 'return variable' (if not procedure)
       if retType /= Nil then do
         retVarAddr <- L.alloca(ltypeOfTyp retType) Nothing 0
@@ -180,7 +179,7 @@ codegenStatement :: Statement -> Codegen ()
 codegenStatement (Block stmts) = mapM_ codegenStatement stmts
 -- assignment
 codegenStatement (Assignment target expr) = do
-  rTarget <- gets ((M.! trace ("reading " ++ target ++ " for write") target) . operands)
+  rTarget <- gets ((M.! target) . operands)
   rExpr <- codegenExpr expr
   L.store rTarget 0 rExpr
 -- if
@@ -201,7 +200,7 @@ codegenStatement (Condition cond truBody falsBody) = mdo
 codegenStatement (ThrowawayResult exp) = M.void (codegenExpr exp)
 -- while
 codegenStatement (WhileLoop cond body) = mdo
-  condResult <- codegenExpr (trace ("cond: " ++ show cond) cond)
+  condResult <- codegenExpr cond
   L.condBr condResult whileBlock mergeBlock
   -- setup break target
   prevBlockVar <- gets finalizeBlock
@@ -209,7 +208,7 @@ codegenStatement (WhileLoop cond body) = mdo
   -- start executing loop
   whileBlock <- L.block `L.named` strToSBS "whileLoop"
   do
-    codegenStatement $ trace ("codegen body: " ++ show body) body
+    codegenStatement body
     condResult <- codegenExpr cond
     let retOp = L.condBr condResult whileBlock mergeBlock
     modify $ \env -> env { finalizeBlock = prevBlockVar }
@@ -245,7 +244,7 @@ codegenExpr :: Expression -> Codegen Operand
 -- literal
 codegenExpr (Literal eLit) = literalOperand eLit
 -- variable read
-codegenExpr (VarRead name) = gets ((M.! trace ("reading var " ++ name) name) . operands) >>= flip L.load 0
+codegenExpr (VarRead name) = gets ((M.! name) . operands) >>= flip L.load 0
 -- funciton call
 codegenExpr (FunctionCall fname params) = do
   ps <- mapM (fmap (, []) . ( \(param, nth) ->
@@ -255,7 +254,7 @@ codegenExpr (FunctionCall fname params) = do
       then
         extractPtr param
       else codegenExpr param )) (zip params [0..])
-  fp <- gets ((M.! trace ("calling function: " ++ fname) fname) . functions)
+  fp <- gets ((M.! fname) . functions)
   L.call fp ps
   where
     extractPtr exp@(VarRead vname) = gets ((M.! vname) . operands)

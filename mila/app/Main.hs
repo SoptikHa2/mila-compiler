@@ -5,7 +5,6 @@ import System.Environment
 import System.Exit
 import Data.Either
 import qualified Data.ByteString.Char8 as B
-import Debug.Trace
 
 main :: IO ()
 main = getArgs >>= parseArgs >>= exitWith
@@ -17,7 +16,7 @@ parseArgs [] = do
 parseArgs [filename] = do
     file <- readFile filename
     let ast = getAST filename file
-    case trace (show ast) ast of
+    case ast of
       Left pe -> do
           print pe
           return $ ExitFailure 1
