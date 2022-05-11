@@ -31,6 +31,11 @@ stdlib =
     ("conv_int", [Double],             Integer),
     ("conv_dbl", [Integer],            Double),
 
+    ("setupSharedInts", [Integer],     Nil),
+    ("getSharedInt", [Integer],        Integer),
+    ("setSharedInt",[Integer, Integer],Nil),
+    ("trashSharedInts", [],            Nil),
+
     ("comeFrom", [Integer],            Integer)
   ]
 

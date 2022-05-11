@@ -1,4 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/shm.h>
+#include <pthread.h>
 
 void write(int param) {
     printf("%d", param);
@@ -39,6 +43,23 @@ void dec(int * k){
 }
 void inc(int * k){
     (*k)++;
+}
+
+int __INTERNAL_segment_id;
+int * __INTERNAL_sharedData = NULL;
+void setupSharedInts(int cnt) {
+    __INTERNAL_segment_id = shmget(IPC_PRIVATE, cnt, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    __INTERNAL_sharedData = (int *) shmat(__INTERNAL_segment_id, 0, 0);
+}
+int getSharedInt(int offset) {
+    return __INTERNAL_sharedData[offset];
+}
+void setSharedInt(int offset, int value) {
+    __INTERNAL_sharedData[offset] = value;
+}
+void trashSharedInts() {
+    shmdt(__INTERNAL_sharedData);
+    shmctl(__INTERNAL_segment_id, IPC_RMID, 0);
 }
 
 // fork n-times

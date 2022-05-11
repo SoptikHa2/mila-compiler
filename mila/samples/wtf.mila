@@ -1,14 +1,17 @@
 program wtf;
 
-var
-    a, b, c: float;
 begin
-    a := 3.16149;
-    write('a: '); writeln(a);
-    b := -4.6;
-    write('b: '); writeln(b);
-    c := 18.6;
-    write('c: '); writeln(c);
-    write('total: '); writeln(a+b+c);
-    write('total (ints): '); writeln(int(a)+int(b)+int(c));
+    setupSharedInts(10);
+    setSharedInt(0, 42);
+    :a;
+
+    comeFrom a;
+        writeln(getSharedInt(0));
+    exit;
+
+
+    comeFrom a;
+        setSharedInt(0, 26);
+        writeln(getSharedInt(0));
+    exit;
 end.
