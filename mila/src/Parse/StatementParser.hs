@@ -53,7 +53,7 @@ forLoop = do
     Lexer.kDo
     let opName = if upOrDown == Token.To then "inc" else "dec"
     let iterationOp = FunctionCall opName [VarRead asgnTarget]
-    ForLoop (asgnTarget, asgnValue) iterationOp targetValue <$> statement
+    ForLoop (asgnTarget, asgnValue) (ThrowawayResult iterationOp) targetValue <$> statement
 
 exit :: Parsec String () Statement
 exit = Lexer.exit >> return AST.Exit

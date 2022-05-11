@@ -5,6 +5,7 @@ import Data.Either
 import Parse.AST
 
 type Context = [(String, Type)]
+type FunctionContext = [(String, [Type])] -- context for function arguments
 type TypingResult = (Either String Type)
 
 stdFunctionsNotYetResolved = [
@@ -32,16 +33,20 @@ stdlib =
   ]
 
 initialCtx :: Program -> Function -> Context
-initialCtx prog@(pname, fx, main) f@(fname, params, typ, vars, consts, body) = 
+initialCtx prog@(pname, fx, main) f@(fname, params, typ, vars, consts, body) =
         stdFunctionsNotYetResolved ++ (map \(n,_,t)->(n,t)) stdlib ++ globalCtx ++
         params ++ vars ++ map annotateConst consts ++ [(fname, typ)]
         where
           globalCtx = map (\(fname, _, rtype, _, _, _) -> (fname, rtype)) fx
 
+initialFunctionCtx :: Program -> FunctionContext
+initialFunctionCtx prog@(_, fx, _) = map (\(fname, params, _, _, _, _) -> (fname, map snd params)) fx ++
+  map (\(fname, args, _) -> (fname, args)) stdlib
+
 -- check if expression matches given type, throws error otherwise
 assertExp :: Context -> Expression -> Type -> Maybe String
-assertExp ctx exp tp = 
-    if tp /= inferredType then 
+assertExp ctx exp tp =
+    if tp /= inferredType then
         Just $ "Type " ++ show inferredType ++ " of expression "
         ++ show exp ++ " doesn't match required type " ++ show tp ++ "."
     else Nothing

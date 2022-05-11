@@ -1,0 +1,15 @@
+program implicitCasts;
+
+function foo(n: integer) : float;
+begin
+    foo := n;
+end
+
+vars
+    f: float;
+begin
+    f := 3.6;
+    writeln(f);
+    f := foo(f);
+    writeln(f);
+end.

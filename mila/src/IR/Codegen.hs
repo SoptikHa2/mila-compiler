@@ -220,7 +220,7 @@ codegenStatement (ForLoop (var, initVal) iterOp cond body) = mdo
   codegenStatement (Assignment var initVal)
   -- we do a little bamboozle here
   codegenStatement
-    (WhileLoop (Computation (EBinOp ENequal (EExp cond) (EExp (Literal (IntegerLiteral 0))))) (Block (body : [ThrowawayResult iterOp])))
+    (WhileLoop (Computation (EBinOp ENequal (EExp cond) (EExp (Literal (IntegerLiteral 0))))) (Block (body : [iterOp])))
 -- exit
 codegenStatement Exit = do
   fun <- getCurrentFunction

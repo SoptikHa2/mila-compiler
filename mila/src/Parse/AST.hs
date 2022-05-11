@@ -40,7 +40,8 @@ data Statement
     | WhileLoop Expression Statement
     -- 1. set [1.1] to [1.2]. Then run [4], each time executing [2],
     -- until [3] is true, then stop
-    | ForLoop (String, Expression) Expression Expression Statement
+    -- for (1.1 = 1.2; 3; 2) { 4; }
+    | ForLoop (String, Expression) Statement Expression Statement
     -- return from function
     | Exit
     -- break out of a loop

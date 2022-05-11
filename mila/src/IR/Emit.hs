@@ -1,6 +1,6 @@
 module IR.Emit (emitIR) where
 
-import StaticAnalysis.Rewrite (replaceFunc)
+import StaticAnalysis.Rewrite (replaceFunc, insertImplicitCasts)
 import IR.Codegen
 import qualified Parse.AST as AST
 
@@ -13,7 +13,7 @@ import qualified LLVM.AST
 import qualified LLVM.AST.Type as Type
 
 emitIR :: AST.Program -> IO BS.ByteString
-emitIR = modToIR . codegenProgram . replaceFunc
+emitIR = modToIR . codegenProgram . insertImplicitCasts . replaceFunc
 
 modToIR :: LLVM.AST.Module -> IO BS.ByteString 
 modToIR mod = withContext $ \context ->

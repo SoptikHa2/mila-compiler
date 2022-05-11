@@ -1,4 +1,4 @@
-program wtf;
+program floats;
 
 var
     a, b, c: float;
@@ -10,4 +10,5 @@ begin
     c := 18.6;
     write('c: '); writeln(c);
     write('total: '); writeln(a+b+c);
+    write('integer total: '); writeln(int(a)+int(b)+int(c));
 end.
