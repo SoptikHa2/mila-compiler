@@ -5,6 +5,7 @@ import System.Environment
 import System.Exit
 import Data.Either
 import qualified Data.ByteString.Char8 as B
+import Debug.Trace;
 
 main :: IO ()
 main = getArgs >>= parseArgs >>= exitWith

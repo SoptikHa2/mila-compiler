@@ -1,6 +1,6 @@
 module Lex.Lexer where
 
-import Text.Parsec (spaces, alphaNum, string, char, oneOf, noneOf, many1, try, digit, letter, Parsec)
+import Text.Parsec (spaces, alphaNum, string, char, oneOf, noneOf, many1, try, digit, letter, Parsec, manyTill, anyChar, newline, skipMany, eof)
 import Control.Applicative ( (<|>), many )
 
 import Lex.Tokens

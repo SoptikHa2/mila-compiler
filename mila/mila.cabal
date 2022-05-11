@@ -54,7 +54,7 @@ executable mila-exe
       Paths_mila
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -g
   build-depends:
       base >=4.7 && <5
     , bytestring

@@ -37,11 +37,13 @@ import Data.ByteString.Char8 (pack)
 import Data.ByteString.Short (ShortByteString, toShort)
 import Data.Maybe
 import qualified LLVM.AST.AddrSpace
+import Debug.Trace
 
 -- When using the IRBuilder, both functions and variables have the type Operand
 data Env = Env { operands :: M.Map String Operand, function :: Function,
                  functions :: M.Map String Operand, strings :: M.Map String Operand,
-                 finalizeBlock :: Maybe Name, program :: Program }
+                 finalizeBlock :: Maybe Name, program :: Program,
+                 labels :: M.Map String [Name] }
   deriving (Eq, Show)
 
 -- LLVM and Codegen type synonyms allow us to emit module definitions and basic
@@ -84,6 +86,15 @@ getCurrentFunction = gets function
 
 getCurrentProgram :: MonadState Env m => m Program
 getCurrentProgram = gets program
+
+addLabel :: MonadState Env m => String -> Name -> m ()
+addLabel comeFromId block = do
+  labels <- gets labels
+  let oldLabels = fromMaybe [] (M.lookup comeFromId labels)
+  modify $ \env -> env { labels = M.insert comeFromId (block : oldLabels) labels }
+
+getLabels :: MonadState Env m => String -> m [Name]
+getLabels str = gets $ (M.! str) . labels
 
 ltypeOfTyp :: Type -> AST.Type
 ltypeOfTyp Nil = AST.void
@@ -235,9 +246,15 @@ codegenStatement Break = do
     Nothing -> error "Failed to break, there is no loop to break out of."
     Just block -> do
       mkTerminator $ L.br block
--- TODO: label, comefrom
-codegenStatement (Label _) = error "not implemented"
-codegenStatement (ComeFrom _) = error "not implemented"
+codegenStatement (ComeFrom name) = mdo
+  L.br comeFromBlock
+  comeFromBlock <- L.block `L.named` strToSBS ("comeFrom-" ++ name)
+  addLabel name comeFromBlock
+codegenStatement (Label name) = mdo
+  labels <- getLabels name
+  L.br $ head labels
+  mergeBlock <- L.block `L.named` strToSBS "labelOut"
+  return ()
 
 -- expressions
 codegenExpr :: Expression -> Codegen Operand
@@ -307,7 +324,7 @@ codegenArithm (EBinOp op lhs rhs) = do
         EGt -> if isFP then L.fcmp FP.UGT else L.icmp IP.SGT
         ELand -> L.and
         ELor -> L.or
-  
+
   lhsCg <- lhs'
   rhsCg <- rhs'
   fun lhsCg rhsCg
@@ -344,8 +361,8 @@ codegenProgram :: Program -> AST.Module
 codegenProgram prog@(modName, funcs, main) =
   flip evalState (Env { operands = M.empty, function = main,
     functions = M.empty, strings = M.empty, finalizeBlock = Nothing,
-    program = prog })
-  $ L.buildModuleT (strToSBS  modName)
+    program = prog, labels = M.empty })
+  $ L.buildModuleT (strToSBS modName)
   $ do
     mapM_ codegenBuildIn milaStdlib
     mapM_ codegenFunctionDef (main:funcs)

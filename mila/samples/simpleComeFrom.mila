@@ -1,0 +1,19 @@
+program simpleComeFrom;
+
+var
+    i : integer;
+begin
+    i := 0;
+
+    comeFrom a;
+
+    inc(i);
+    writeln(i);
+
+    if i >= 10 then
+        exit;
+
+    :a;
+
+    writeln('exit here should not happen');
+end.
