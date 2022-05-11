@@ -11,9 +11,11 @@ begin
     writeln(i);
 
     if i >= 10 then
-        exit;
+        :b;
 
     :a;
+    
+    comeFrom b;
 
-    writeln('exit here should not happen');
+    writeln('exit here');
 end.

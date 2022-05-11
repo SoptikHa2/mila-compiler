@@ -43,7 +43,7 @@ import Debug.Trace
 data Env = Env { operands :: M.Map String Operand, function :: Function,
                  functions :: M.Map String Operand, strings :: M.Map String Operand,
                  finalizeBlock :: Maybe Name, program :: Program,
-                 labels :: M.Map String [Name] }
+                 labels :: M.Map String [(Bool, Name)] }
   deriving (Eq, Show)
 
 -- LLVM and Codegen type synonyms allow us to emit module definitions and basic
@@ -91,10 +91,27 @@ addLabel :: MonadState Env m => String -> Name -> m ()
 addLabel comeFromId block = do
   labels <- gets labels
   let oldLabels = fromMaybe [] (M.lookup comeFromId labels)
-  modify $ \env -> env { labels = M.insert comeFromId (block : oldLabels) labels }
+  modify $ \env -> env { labels = M.insert comeFromId ((True, block) : oldLabels) labels }
 
 getLabels :: MonadState Env m => String -> m [Name]
-getLabels str = gets $ (M.! str) . labels
+getLabels str = do
+  lbls <- gets ((M.! str) . labels)
+  return $ map snd lbls
+
+useUpLabel :: MonadState Env m => String -> m Name
+useUpLabel comeFromId = do
+  labels <- gets labels
+  let (newLabelList, nameToProcess) = getLabelAndUseItUp (labels M.! comeFromId)
+  modify $ \env -> env { labels = M.insert comeFromId newLabelList labels }
+  return nameToProcess
+  where
+    getLabelAndUseItUp :: [(Bool, Name)] -> ([(Bool, Name)], Name)
+    getLabelAndUseItUp [] = error "Not label to use up. AST mismatch."
+    getLabelAndUseItUp [(True, n)] = ([(False, n)], n)
+    getLabelAndUseItUp ((True, n):xs) = ((False, n) : xs, n)
+    getLabelAndUseItUp (fp@(False, _):xs) =
+      let (lst, res) = getLabelAndUseItUp xs in
+        (fp:lst, res)
 
 ltypeOfTyp :: Type -> AST.Type
 ltypeOfTyp Nil = AST.void
@@ -130,6 +147,7 @@ codegenFunc :: Function -> LLVM ()
 codegenFunc f@(name, args, retType, vars, consts, body) = mdo
   -- set function as currently working with
   setFunctionEnv f
+  genComeFromLabels body
   -- define body itself inside `locally` to prevent local variables from escaping scope
   function <- locally $ do
     let retty = ltypeOfTyp retType
@@ -169,6 +187,15 @@ codegenFunc f@(name, args, retType, vars, consts, body) = mdo
         retVar <- codegenExpr (VarRead name)
         L.ret retVar
       else do L.retVoid
+    genComeFromLabels :: Statement -> LLVM ()
+    genComeFromLabels (Block st) = mapM_ genComeFromLabels st
+    genComeFromLabels (Condition _ st mst) = do
+      genComeFromLabels st
+      mapM_ genComeFromLabels mst
+    genComeFromLabels (WhileLoop _ st) = genComeFromLabels st
+    genComeFromLabels (ComeFrom cfId) = addLabel cfId (mkName cfId)
+    genComeFromLabels _ = do return ()
+
 
 -- literal
 literalOperand :: ExpLiteral -> Codegen Operand
@@ -247,12 +274,12 @@ codegenStatement Break = do
     Just block -> do
       mkTerminator $ L.br block
 codegenStatement (ComeFrom name) = mdo
-  L.br comeFromBlock
-  comeFromBlock <- L.block `L.named` strToSBS ("comeFrom-" ++ name)
-  addLabel name comeFromBlock
+  L.br blockName
+  blockName <- useUpLabel name
+  L.emitBlockStart blockName
 codegenStatement (Label name) = mdo
   labels <- getLabels name
-  L.br $ head labels
+  L.br $ head labels -- todo: multiple comeFroms per label
   mergeBlock <- L.block `L.named` strToSBS "labelOut"
   return ()
 
