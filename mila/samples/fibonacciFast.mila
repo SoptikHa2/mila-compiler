@@ -1,0 +1,45 @@
+program fibonacciFast;
+
+function fib(n: integer): integer;
+var
+    f1, f2, f1tmp, f2tmp : integer;
+begin
+    if (n = 0) then begin
+        fib := 0;
+        exit;
+    end;
+    if (n <= 2) then begin
+        fib := 1;
+        exit;
+    end;
+        
+    f1 := -1;
+    f2 := -1;
+    f1tmp := -1;
+    f2tmp := -1;
+
+    :fib;
+
+    comeFrom fib;
+    f1tmp := fib(n-1);
+    if f1tmp >= 0 then
+        f1 := f1tmp;
+    fib := -1;
+    exit;
+
+    comeFrom fib;
+    f2tmp := fib(n-2);
+    if f2tmp >= 0 then
+        f2 := f2tmp;
+    
+    while f1 = -1 do begin end;
+
+    fib := f1 + f2;
+end;
+
+var
+    input: integer;
+begin
+    readln(input);
+    writeln(fib(input));
+end.

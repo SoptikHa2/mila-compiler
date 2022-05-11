@@ -29,7 +29,9 @@ stdlib =
     ("writelns", [String],             Nil),
 
     ("conv_int", [Double],             Integer),
-    ("conv_dbl", [Integer],            Double)
+    ("conv_dbl", [Integer],            Double),
+
+    ("comeFrom", [Integer],            Integer)
   ]
 
 initialCtx :: Program -> Function -> Context

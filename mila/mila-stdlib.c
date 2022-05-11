@@ -40,4 +40,12 @@ void dec(int * k){
 void inc(int * k){
     (*k)++;
 }
-// TODO: comeFrom
+
+// fork n-times
+int comeFrom(int n) {
+    for(int i = 0; i < n-1; i++) {
+        int forkRes = fork();
+        if (forkRes == 0) return i;
+    }
+    return n-1;
+}

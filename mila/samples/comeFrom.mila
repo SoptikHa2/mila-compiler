@@ -3,20 +3,21 @@ program comingFrom;
 var i: integer;
 begin
     i := 0;
-   :labelA;
-    
-    comeFrom labelA;
+    :a;
+
+    comeFrom a;
+    writeln('First');
+    writeln(i);
     i := 1;
     writeln(i);
+    writeln('First end');
     exit;
 
-    comeFrom labelA;
+    comeFrom a;
+    writeln('Second');
+    writeln(i);
     i := 2;
     writeln(i);
-    exit;
-
-    comeFrom labelA;
-    i := 3;
-    writeln(i);
+    writeln('Second end');
     exit;
 end.

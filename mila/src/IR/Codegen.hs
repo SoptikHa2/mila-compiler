@@ -37,7 +37,6 @@ import Data.ByteString.Char8 (pack)
 import Data.ByteString.Short (ShortByteString, toShort)
 import Data.Maybe
 import qualified LLVM.AST.AddrSpace
-import Debug.Trace
 
 -- When using the IRBuilder, both functions and variables have the type Operand
 data Env = Env { operands :: M.Map String Operand, function :: Function,
@@ -193,9 +192,16 @@ codegenFunc f@(name, args, retType, vars, consts, body) = mdo
       genComeFromLabels st
       mapM_ genComeFromLabels mst
     genComeFromLabels (WhileLoop _ st) = genComeFromLabels st
-    genComeFromLabels (ComeFrom cfId) = addLabel cfId (mkName cfId)
+    genComeFromLabels (ComeFrom cfId) = do
+      cmfrCnt <- comeFromsCnt cfId
+      addLabel cfId (mkName (cfId ++ show cmfrCnt))
     genComeFromLabels _ = do return ()
-
+    comeFromsCnt :: String -> LLVM Int
+    comeFromsCnt cfId = do
+      lbls <- gets labels
+      case M.lookup cfId lbls of
+        Nothing -> return 0
+        Just a -> return $ length a
 
 -- literal
 literalOperand :: ExpLiteral -> Codegen Operand
@@ -260,11 +266,11 @@ codegenStatement (ForLoop (var, initVal) iterOp cond body) = mdo
   codegenStatement
     (WhileLoop (Computation (EBinOp ENequal (EExp cond) (EExp (Literal (IntegerLiteral 0))))) (Block (body : [iterOp])))
 -- exit
-codegenStatement Exit = do
+codegenStatement Exit = mdo
   fun <- getCurrentFunction
   if funType fun == Nil then L.retVoid else do
     retVar <- codegenExpr (VarRead (funName fun))
-    L.ret retVar
+    mkTerminator $ L.ret retVar
 -- break
 codegenStatement Break = do
   -- branch to current loop finalize block
@@ -274,14 +280,35 @@ codegenStatement Break = do
     Just block -> do
       mkTerminator $ L.br block
 codegenStatement (ComeFrom name) = mdo
-  L.br blockName
+  mkTerminator $ L.br blockName
   blockName <- useUpLabel name
   L.emitBlockStart blockName
+  codegenStatement Exit
 codegenStatement (Label name) = mdo
   labels <- getLabels name
-  L.br $ head labels -- todo: multiple comeFroms per label
+  case labels of
+    [] -> error $ "No comeFrom's to jump from " ++ name
+    [nm] -> mkTerminator $ L.br nm
+    xs -> do
+      -- call custom fork
+      forkRes <- codegenExpr (FunctionCall "comeFrom" [Literal $ IntegerLiteral $ toInteger $ length xs])
+      genMultipleJumps xs 0 forkRes
   mergeBlock <- L.block `L.named` strToSBS "labelOut"
   return ()
+  where
+    -- jumps to generate, current n# of jump gen, variable with fork result
+    genMultipleJumps :: [Name] -> Int -> Operand -> Codegen ()
+    genMultipleJumps [] _ _ = codegenStatement Exit
+    genMultipleJumps (x:xs) n var = mdo
+      -- generate n'th if
+      condRes <- L.icmp IP.EQ (L.int32 $ toInteger n) var
+      mkTerminator $ L.condBr condRes thenBlock mergeBlock
+      thenBlock <- L.block `L.named` strToSBS "then"
+      do
+        mkTerminator $ L.br x
+      mergeBlock <- L.block `L.named` strToSBS "merge"
+      do
+        genMultipleJumps xs (n+1) var
 
 -- expressions
 codegenExpr :: Expression -> Codegen Operand
