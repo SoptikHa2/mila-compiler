@@ -1,17 +1,8 @@
 program wtf;
 
+var
+    a : integer;
 begin
-    setupSharedInts(10);
-    setSharedInt(0, 42);
-    :a;
-
-    comeFrom a;
-        writeln(getSharedInt(0));
-    exit;
-
-
-    comeFrom a;
-        setSharedInt(0, 26);
-        writeln(getSharedInt(0));
-    exit;
+    for a := 20 downTo 0 do
+        writeln(a);
 end.

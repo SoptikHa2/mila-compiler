@@ -73,3 +73,7 @@ int comeFrom(int n) {
     }
     return n-1;
 }
+
+void die() {
+    exit(0);
+}

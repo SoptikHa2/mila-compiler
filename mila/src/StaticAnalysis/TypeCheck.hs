@@ -37,7 +37,8 @@ stdlib =
     ("setSharedInt",[Integer, Integer],Nil),
     ("trashSharedInts", [],            Nil),
 
-    ("comeFrom", [Integer],            Integer)
+    ("comeFrom", [Integer],            Integer),
+    ("die",      [],                   Nil)
   ]
 
 initialCtx :: Program -> Function -> Context

@@ -23,7 +23,7 @@ begin
     ftmp := fib(n-1, maxMem);
     if ftmp > -1 then
         setSharedInt(nextAvOffset, ftmp);
-    exit;
+    die();
 
     comeFrom ff;
     ftmp := fib(n-2, maxMem);
@@ -40,6 +40,9 @@ begin
     setSharedInt(0, 1);
     readln(input);
     result := fib(input, memSize);
-    if result <> -1 then
-        writeln(result);
+    if result <> -1 then begin
+        write('Result: '); writeln(result);
+        write('Used '); write(getSharedInt(0)); writeln(' processes');
+        trashSharedInts();
+    end;
 end.

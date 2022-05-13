@@ -10,5 +10,6 @@ begin
         inc(i);
         inc(n);
         if n > 20 then break;
+        writeln('foobar');
     end;
 end.
