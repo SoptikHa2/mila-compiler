@@ -1,4 +1,5 @@
 module Parse.AST where
+import Text.Parsec (SourcePos)
 
 data Type
     = Integer
@@ -22,26 +23,28 @@ type Function = (
     Type, -- return type
     [AnnotatedIdentifier], -- variables
     [ConstIdentifier], -- consts
-    Statement
+    PositionStatement
     )
 funName :: Function -> String
 funName (name, _, _, _, _, _) = name
 funType :: Function -> Type
 funType (_, _, typ, _, _, _) = typ
 
+type PositionStatement = (SourcePos, Statement)
+
 data Statement
     -- list of statements in block
-    = Block [Statement]
+    = Block [PositionStatement]
     -- set variable [1:string] to value [2:expression]
     | Assignment String Expression
     -- if [1:expression] is true, run [2], else run [3]
-    | Condition Expression Statement (Maybe Statement)
+    | Condition Expression PositionStatement (Maybe PositionStatement)
     -- while [1] is true, run [2]
-    | WhileLoop Expression Statement
+    | WhileLoop Expression PositionStatement
     -- 1. set [1.1] to [1.2]. Then run [4], each time executing [2],
     -- until [3] is true, then stop
     -- for (1.1 = 1.2; 3; 2) { 4; }
-    | ForLoop (String, Expression) Statement Expression Statement
+    | ForLoop (String, Expression) PositionStatement Expression PositionStatement
     -- return from function
     | Exit
     -- break out of a loop

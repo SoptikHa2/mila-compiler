@@ -143,7 +143,7 @@ codegenFunctionDef f@(name, params, retType, _, _, _) =
   registerFunction name (ltypeOfTyp retType) (map (ltypeOfTyp . snd) params)
 
 codegenFunc :: Function -> LLVM ()
-codegenFunc f@(name, args, retType, vars, consts, body) = mdo
+codegenFunc f@(name, args, retType, vars, consts, (_,body)) = mdo
   -- set function as currently working with
   setFunctionEnv f
   genComeFromLabels body
@@ -187,11 +187,11 @@ codegenFunc f@(name, args, retType, vars, consts, body) = mdo
         L.ret retVar
       else do L.retVoid
     genComeFromLabels :: Statement -> LLVM ()
-    genComeFromLabels (Block st) = mapM_ genComeFromLabels st
-    genComeFromLabels (Condition _ st mst) = do
+    genComeFromLabels (Block stx) = mapM_ (genComeFromLabels . snd) stx
+    genComeFromLabels (Condition _ (_,st) mst) = do
       genComeFromLabels st
-      mapM_ genComeFromLabels mst
-    genComeFromLabels (WhileLoop _ st) = genComeFromLabels st
+      mapM_ genComeFromLabels (snd <$> mst)
+    genComeFromLabels (WhileLoop _ (_,st)) = genComeFromLabels st
     genComeFromLabels (ComeFrom cfId) = do
       cmfrCnt <- comeFromsCnt cfId
       addLabel cfId (mkName (cfId ++ show cmfrCnt))
@@ -220,14 +220,14 @@ literalOperand (StringLiteral str) = do
 -- statements
 codegenStatement :: Statement -> Codegen ()
 -- block
-codegenStatement (Block stmts) = mapM_ codegenStatement stmts
+codegenStatement (Block stmts) = mapM_ (codegenStatement . snd) stmts
 -- assignment
 codegenStatement (Assignment target expr) = do
   rTarget <- gets ((M.! target) . operands)
   rExpr <- codegenExpr expr
   L.store rTarget 0 rExpr
 -- if
-codegenStatement (Condition cond truBody falsBody) = mdo
+codegenStatement (Condition cond (_,truBody) falsBody) = mdo
   condResult <- codegenExpr cond
   L.condBr condResult thenBlock elseBlock
   thenBlock <- L.block `L.named` strToSBS "then"
@@ -236,14 +236,14 @@ codegenStatement (Condition cond truBody falsBody) = mdo
     mkTerminator $ L.br mergeBlock
   elseBlock <- L.block `L.named` strToSBS "else"
   do
-    mapM_ codegenStatement (maybeToList falsBody)
+    mapM_ codegenStatement (maybeToList (snd <$> falsBody))
     mkTerminator $ L.br mergeBlock
   mergeBlock <- L.block `L.named` strToSBS "merge"
   return ()
 -- throwaway
 codegenStatement (ThrowawayResult exp) = M.void (codegenExpr exp)
 -- while
-codegenStatement (WhileLoop cond body) = mdo
+codegenStatement (WhileLoop cond (_,body)) = mdo
   condResult <- codegenExpr cond
   L.condBr condResult whileBlock mergeBlock
   -- setup break target
@@ -260,11 +260,11 @@ codegenStatement (WhileLoop cond body) = mdo
   mergeBlock <- L.block `L.named` strToSBS "merge"
   return ()
 -- for
-codegenStatement (ForLoop (var, initVal) iterOp cond body) = mdo
+codegenStatement (ForLoop (var, initVal) iterOp cond body@(pos,bodyStmt)) = mdo
   codegenStatement (Assignment var initVal)
   -- we do a little bamboozle here
   codegenStatement
-    (WhileLoop (Computation (EBinOp ENequal (EExp cond) (EExp (VarRead var)))) (Block (body : [iterOp])))
+    (WhileLoop (Computation (EBinOp ENequal (EExp cond) (EExp (VarRead var)))) (pos, Block (body : [iterOp])))
 -- exit
 codegenStatement Exit = mdo
   fun <- getCurrentFunction

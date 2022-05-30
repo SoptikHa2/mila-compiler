@@ -1,84 +1,116 @@
 module Parse.StatementParser (statement) where
 
-import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, optionMaybe, Parsec, (<?>))
+import Text.Parsec (spaces, alphaNum, string, char, oneOf, many1, try, digit, letter, optionMaybe, Parsec, (<?>), getPosition)
 import Control.Applicative
 import Parse.AST as AST
 import qualified Lex.Lexer as Lexer
 import Parse.ExpressionParser
 import qualified Lex.Tokens as Token
 
-statement :: Parsec String () Statement
+statement :: Parsec String () PositionStatement
 statement = try condition <|> try whileLoop <|> try forLoop <|> try assignment <|> try exit <|> try loopBreak <|> try label <|> try comeFrom <|> try assert <|> try block <|> try throwawayResult <?> "statement"
 
-block :: Parsec String () Statement
+block :: Parsec String () PositionStatement
 block = do
+    spaces
+    pos <- getPosition
     Lexer.begin
     st <- many (statement <* optionMaybe (try Lexer.semicolon <|> try Lexer.dot))
     Lexer.end
     optionMaybe (try Lexer.semicolon <|> try Lexer.dot)
-    return $ Block st
+    return (pos, Block st)
 
-assignment :: Parsec String () Statement
+assignment :: Parsec String () PositionStatement
 assignment = do
+    spaces
+    pos <- getPosition
     id <- Lexer.identifierStr
     Lexer.assignment
     value <- expression
-    return $ Assignment id value
+    return (pos, Assignment id value)
 
-condition :: Parsec String () Statement
+condition :: Parsec String () PositionStatement
 condition = do
+    spaces
+    pos <- getPosition
     Lexer.kIf
     cond <- expression
     Lexer.kThen
     body <- statement
     -- potentially else branch
     elseBr <- optionMaybe (try $ Lexer.kElse >> statement)
-    return $ Condition cond body elseBr
+    return (pos, Condition cond body elseBr)
 
-whileLoop :: Parsec String () Statement
+whileLoop :: Parsec String () PositionStatement
 whileLoop = do
+    spaces
+    pos <- getPosition
     Lexer.while
     cond <- expression
     Lexer.kDo
-    WhileLoop cond <$> statement
+    stmt <- statement
+    return (pos, WhileLoop cond stmt)
 
-forLoop :: Parsec String () Statement
+forLoop :: Parsec String () PositionStatement
 forLoop = do
+    spaces
+    pos <- getPosition
     Lexer.for
     asgnTarget <- Lexer.identifierStr
     Lexer.assignment
+    spaces
+    asgnPos <- getPosition
     asgnValue <- expression
     upOrDown <- try Lexer.to <|> try Lexer.downTo
     targetValue <- expression
     Lexer.kDo
+    stmt <- statement
     let opName = if upOrDown == Token.To then "inc" else "dec"
     let iterationOp = FunctionCall opName [VarRead asgnTarget]
-    ForLoop (asgnTarget, asgnValue) (ThrowawayResult iterationOp) targetValue <$> statement
+    return (pos, ForLoop (asgnTarget, asgnValue) (asgnPos, ThrowawayResult iterationOp) targetValue stmt)
 
-exit :: Parsec String () Statement
-exit = Lexer.exit >> return AST.Exit
+exit :: Parsec String () PositionStatement
+exit = do
+    spaces
+    pos <- getPosition
+    Lexer.exit
+    return (pos, AST.Exit)
 
-assert :: Parsec String () Statement
+assert :: Parsec String () PositionStatement
 assert = do
-    asrt <- Lexer.assert
+    spaces
+    pos <- getPosition
+    Lexer.assert
     lhs <- expression
     rhs <- expression
-    return $ Assert lhs rhs
+    return (pos, Assert lhs rhs)
 
-throwawayResult :: Parsec String () Statement
+throwawayResult :: Parsec String () PositionStatement
 throwawayResult = do
+    spaces
+    pos <- getPosition
     expr <- expression
-    return $ ThrowawayResult expr
+    return (pos, ThrowawayResult expr)
 
-loopBreak :: Parsec String () Statement
-loopBreak = Lexer.break >> return AST.Break
+loopBreak :: Parsec String () PositionStatement
+loopBreak = do
+    spaces
+    pos <- getPosition
+    Lexer.break
+    return (pos, AST.Break)
 
-label :: Parsec String () Statement
+label :: Parsec String () PositionStatement
 label = do
+    spaces
+    pos <- getPosition
     Lexer.colon
-    Label <$> Lexer.identifierStr
+    labelName <- Lexer.identifierStr
+    return (pos, Label labelName)
 
-comeFrom :: Parsec String () Statement
+comeFrom :: Parsec String () PositionStatement
 comeFrom = do
+    spaces
+    pos <- getPosition
     Lexer.comeFrom
-    ComeFrom <$> Lexer.identifierStr
+    comeFromName <- Lexer.identifierStr
+    return (pos, ComeFrom comeFromName)

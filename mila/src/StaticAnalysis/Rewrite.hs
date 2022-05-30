@@ -22,21 +22,21 @@ replaceFuncF :: Program -> Function -> Function
 replaceFuncF prog f@(fname, params, typ, vars, consts, body) =
     (fname, params, typ, vars, consts, stmtReplace (initialCtx prog f) body)
     where
-        stmtReplace :: Context -> Statement -> Statement
-        stmtReplace ctx (Block xs) = Block $ map (stmtReplace ctx) xs
-        stmtReplace ctx (Assignment trg ex) = Assignment trg (expReplace ctx ex)
-        stmtReplace ctx (Condition cond tru fals) =
-            Condition (expReplace ctx cond) (stmtReplace ctx tru) (stmtReplace ctx <$> fals)
-        stmtReplace ctx (WhileLoop cond body) = WhileLoop (expReplace ctx cond) (stmtReplace ctx body)
-        stmtReplace ctx (ForLoop (initVar, initExp) iterOp cond body) =
-            ForLoop (initVar, expReplace ctx initExp) (stmtReplace ctx iterOp)
-                (expReplace ctx cond) (stmtReplace ctx body)
-        stmtReplace ctx Exit = Exit
-        stmtReplace ctx Break = Break
-        stmtReplace ctx l@(Label _) = l
-        stmtReplace ctx c@(ComeFrom _) = c
-        stmtReplace ctx a@(Assert lhs rhs) = Assert (expReplace ctx lhs) (expReplace ctx rhs)
-        stmtReplace ctx (ThrowawayResult exp) = ThrowawayResult $ expReplace ctx exp
+        stmtReplace :: Context -> PositionStatement -> PositionStatement
+        stmtReplace ctx (pos, Block xs) = (pos,Block $ map (stmtReplace ctx) xs)
+        stmtReplace ctx (pos, Assignment trg ex) = (pos,Assignment trg (expReplace ctx ex))
+        stmtReplace ctx (pos, Condition cond tru fals) =
+            (pos,Condition (expReplace ctx cond) (stmtReplace ctx tru) (stmtReplace ctx <$> fals))
+        stmtReplace ctx (pos, WhileLoop cond body) = (pos,WhileLoop (expReplace ctx cond) (stmtReplace ctx body))
+        stmtReplace ctx (pos, ForLoop (initVar, initExp) iterOp cond body) =
+            (pos,ForLoop (initVar, expReplace ctx initExp) (stmtReplace ctx iterOp)
+                (expReplace ctx cond) (stmtReplace ctx body))
+        stmtReplace ctx stmt@(_,Exit) = stmt
+        stmtReplace ctx stmt@(_,Break) = stmt
+        stmtReplace ctx stmt@(_,Label _) = stmt
+        stmtReplace ctx stmt@(_,ComeFrom _) = stmt
+        stmtReplace ctx a@(pos,Assert lhs rhs) = (pos,Assert (expReplace ctx lhs) (expReplace ctx rhs))
+        stmtReplace ctx (pos,ThrowawayResult exp) = (pos,ThrowawayResult $ expReplace ctx exp)
 
         expReplace :: Context -> Expression -> Expression
         expReplace ctx l@(Literal _) = l
@@ -64,29 +64,29 @@ insertImplicitCastsF :: Program -> Function -> Function
 insertImplicitCastsF prog f@(fname, params, typ, vars, consts, body) =
     (fname, params, typ, vars, consts, insertImplicitCastsStmt (initialCtx prog f) (initialFunctionCtx prog) body)
     where
-        insertImplicitCastsStmt :: Context -> FunctionContext -> Statement -> Statement
-        insertImplicitCastsStmt ctx fctx (Block sx) = Block $ map (insertImplicitCastsStmt ctx fctx) sx
-        insertImplicitCastsStmt ctx fctx stmt@(Assignment target expr) =
+        insertImplicitCastsStmt :: Context -> FunctionContext -> PositionStatement -> PositionStatement
+        insertImplicitCastsStmt ctx fctx (pos, (Block sx)) = (pos, Block $ map (insertImplicitCastsStmt ctx fctx) sx)
+        insertImplicitCastsStmt ctx fctx (pos, stmt@(Assignment target expr)) =
             let exprType = inferExp ctx expr in
                 case (lookup target ctx, exprType) of
                     (Nothing, _) -> error $ "Variable " ++ target ++ " is not in typing context."
-                    (Just varType, expType) -> Assignment target $ rewriteExpr ctx fctx varType expr
-        insertImplicitCastsStmt ctx fctx (Condition cond truSt falsSt) =
-            Condition (insertImplicitCastsExpr ctx fctx cond) (insertImplicitCastsStmt ctx fctx truSt) (insertImplicitCastsStmt ctx fctx <$> falsSt)
-        insertImplicitCastsStmt ctx fctx (WhileLoop expr body) =
-            WhileLoop (insertImplicitCastsExpr ctx fctx expr) (insertImplicitCastsStmt ctx fctx body)
-        insertImplicitCastsStmt ctx fctx (ForLoop (iterVar, initExpr) iterOp cond body) =
+                    (Just varType, expType) -> (pos, Assignment target $ rewriteExpr ctx fctx varType expr)
+        insertImplicitCastsStmt ctx fctx (pos, (Condition cond truSt falsSt)) =
+            (pos, Condition (insertImplicitCastsExpr ctx fctx cond) (insertImplicitCastsStmt ctx fctx truSt) (insertImplicitCastsStmt ctx fctx <$> falsSt))
+        insertImplicitCastsStmt ctx fctx (pos, (WhileLoop expr body)) =
+            (pos, WhileLoop (insertImplicitCastsExpr ctx fctx expr) (insertImplicitCastsStmt ctx fctx body))
+        insertImplicitCastsStmt ctx fctx (pos, (ForLoop (iterVar, initExpr) iterOp cond body)) =
             case lookup iterVar ctx of
                 Nothing -> error $ "Variable " ++ iterVar ++ " is not in typing context."
                 Just iterVarType ->
-                    ForLoop (iterVar, rewriteExpr ctx fctx iterVarType initExpr) (insertImplicitCastsStmt ctx fctx iterOp)
-                        cond (insertImplicitCastsStmt ctx fctx body)
-        insertImplicitCastsStmt ctx _ stmt@Exit = stmt
-        insertImplicitCastsStmt ctx _ stmt@Break = stmt
-        insertImplicitCastsStmt ctx _ stmt@(Label _) = stmt
-        insertImplicitCastsStmt ctx _ stmt@(ComeFrom _) = stmt
-        insertImplicitCastsStmt ctx fctx stmt@(Assert lhs rhs) = Assert (insertImplicitCastsExpr ctx fctx lhs) (insertImplicitCastsExpr ctx fctx rhs)
-        insertImplicitCastsStmt ctx fctx stmt@(ThrowawayResult expr) = ThrowawayResult $ insertImplicitCastsExpr ctx fctx expr
+                    (pos, ForLoop (iterVar, rewriteExpr ctx fctx iterVarType initExpr) (insertImplicitCastsStmt ctx fctx iterOp)
+                        cond (insertImplicitCastsStmt ctx fctx body))
+        insertImplicitCastsStmt ctx _ stmt@(_,Exit) = stmt
+        insertImplicitCastsStmt ctx _ stmt@(_,Break) = stmt
+        insertImplicitCastsStmt ctx _ stmt@(_,Label _) = stmt
+        insertImplicitCastsStmt ctx _ stmt@(_,ComeFrom _) = stmt
+        insertImplicitCastsStmt ctx fctx stmt@(pos,Assert lhs rhs) = (pos, Assert (insertImplicitCastsExpr ctx fctx lhs) (insertImplicitCastsExpr ctx fctx rhs))
+        insertImplicitCastsStmt ctx fctx stmt@(pos,ThrowawayResult expr) = (pos, ThrowawayResult $ insertImplicitCastsExpr ctx fctx expr)
 
         -- expect function argument context and expression
         insertImplicitCastsExpr :: Context -> FunctionContext -> Expression -> Expression
