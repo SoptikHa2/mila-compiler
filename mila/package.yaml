@@ -33,7 +33,17 @@ library:
 executables:
   mila-exe:
     main:                Main.hs
-    source-dirs:         app
+    source-dirs:         app/compilation
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -g
+    dependencies:
+    - mila
+  mila-symbolic-exe:
+    main:                 Main.hs
+    source-dirs:          app/symbolic-execution
     ghc-options:
     - -threaded
     - -rtsopts

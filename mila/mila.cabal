@@ -53,7 +53,25 @@ executable mila-exe
   other-modules:
       Paths_mila
   hs-source-dirs:
-      app
+      app/compilation
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -g
+  build-depends:
+      base >=4.7 && <5
+    , bytestring
+    , containers ==0.6.*
+    , llvm-hs >=9.0.0 && <9.1
+    , llvm-hs-pure >=9.0.0 && <9.1
+    , mila
+    , mtl >=2.0 && <3.0
+    , parsec >=3.1 && <4
+  default-language: Haskell2010
+
+executable mila-symbolic-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_mila
+  hs-source-dirs:
+      app/symbolic-execution
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -g
   build-depends:
       base >=4.7 && <5

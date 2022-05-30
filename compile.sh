@@ -8,6 +8,6 @@ if [ -n "${2-}" ]; then
 fi
 
 cd mila
-stack run -- "$fullpath" > /tmp/"$fname.ll" || cat /tmp/"$fname.ll"
+stack run mila-exe -- "$fullpath" > /tmp/"$fname.ll" || cat /tmp/"$fname.ll"
 cd ..
 clang mila/mila-stdlib.c /tmp/"$fname.ll" -o "$outfname" -Wno-override-module -Wno-implicit-function-declaration
