@@ -35,6 +35,7 @@ data Token
   | Break
   | Continue
   | Exit
+  | Assert
   | Assignment
   | OpPlus
   | OpMinus

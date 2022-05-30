@@ -8,7 +8,7 @@ import Parse.ExpressionParser
 import qualified Lex.Tokens as Token
 
 statement :: Parsec String () Statement
-statement = try condition <|> try whileLoop <|> try forLoop <|> try assignment <|> try exit <|> try loopBreak <|> try label <|> try comeFrom <|> try block <|> try throwawayResult <?> "statement"
+statement = try condition <|> try whileLoop <|> try forLoop <|> try assignment <|> try exit <|> try loopBreak <|> try label <|> try comeFrom <|> try assert <|> try block <|> try throwawayResult <?> "statement"
 
 block :: Parsec String () Statement
 block = do
@@ -57,6 +57,13 @@ forLoop = do
 
 exit :: Parsec String () Statement
 exit = Lexer.exit >> return AST.Exit
+
+assert :: Parsec String () Statement
+assert = do
+    asrt <- Lexer.assert
+    lhs <- expression
+    rhs <- expression
+    return $ Assert lhs rhs
 
 throwawayResult :: Parsec String () Statement
 throwawayResult = do

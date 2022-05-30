@@ -52,7 +52,6 @@ functionCall = do
 variableRead :: Parsec String () Expression
 variableRead = VarRead <$> Lexer.identifierStr
 
-
 -- Arithmetics
 
 exprArithm :: Parser ExpArithmetics

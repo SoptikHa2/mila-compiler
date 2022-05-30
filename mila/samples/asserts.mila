@@ -1,0 +1,13 @@
+program asserts;
+
+const A =  10;
+      B = $1A;
+      C = &10;
+begin
+  assert A 10;
+  assert B 26;
+  assert C 8;
+  writeln('Next assert will fail:');
+  assert C 10;
+  writeln('This should not be seen.');
+end.

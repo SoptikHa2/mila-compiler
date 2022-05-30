@@ -35,6 +35,7 @@ replaceFuncF prog f@(fname, params, typ, vars, consts, body) =
         stmtReplace ctx Break = Break
         stmtReplace ctx l@(Label _) = l
         stmtReplace ctx c@(ComeFrom _) = c
+        stmtReplace ctx a@(Assert lhs rhs) = Assert (expReplace ctx lhs) (expReplace ctx rhs)
         stmtReplace ctx (ThrowawayResult exp) = ThrowawayResult $ expReplace ctx exp
 
         expReplace :: Context -> Expression -> Expression
@@ -84,6 +85,7 @@ insertImplicitCastsF prog f@(fname, params, typ, vars, consts, body) =
         insertImplicitCastsStmt ctx _ stmt@Break = stmt
         insertImplicitCastsStmt ctx _ stmt@(Label _) = stmt
         insertImplicitCastsStmt ctx _ stmt@(ComeFrom _) = stmt
+        insertImplicitCastsStmt ctx fctx stmt@(Assert lhs rhs) = Assert (insertImplicitCastsExpr ctx fctx lhs) (insertImplicitCastsExpr ctx fctx rhs)
         insertImplicitCastsStmt ctx fctx stmt@(ThrowawayResult expr) = ThrowawayResult $ insertImplicitCastsExpr ctx fctx expr
 
         -- expect function argument context and expression

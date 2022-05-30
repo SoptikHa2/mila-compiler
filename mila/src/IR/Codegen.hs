@@ -271,6 +271,16 @@ codegenStatement Exit = mdo
   if funType fun == Nil then L.retVoid else do
     retVar <- codegenExpr (VarRead (funName fun))
     mkTerminator $ L.ret retVar
+codegenStatement (Assert lhs rhs) = mdo
+  condRes <- codegenExpr (Computation (EBinOp ENequal (EExp lhs) (EExp rhs)))
+  L.condBr condRes assertFailedBranch mergeBranch
+  assertFailedBranch <- L.block `L.named` strToSBS "assertFail"
+  do
+    codegenExpr (FunctionCall "writelns" [Literal $ StringLiteral $ "Assertion failed: " ++ show lhs ++ "!=" ++ show rhs ++ "."])
+    codegenExpr (FunctionCall "die" [])
+    mkTerminator $ L.br mergeBranch
+  mergeBranch <- L.block `L.named` strToSBS "merge"
+  return ()
 -- break
 codegenStatement Break = do
   -- branch to current loop finalize block

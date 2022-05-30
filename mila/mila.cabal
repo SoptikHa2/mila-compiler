@@ -34,6 +34,8 @@ library
       Parse.StatementParser
       StaticAnalysis.Rewrite
       StaticAnalysis.TypeCheck
+      Symb.SymbEval
+      Symb.SymbState
   other-modules:
       Paths_mila
   hs-source-dirs:

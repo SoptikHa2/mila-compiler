@@ -50,6 +50,8 @@ data Statement
     | Label String
     -- define where to jump from labels
     | ComeFrom String
+    -- assert that lhs and rhs are the same
+    | Assert Expression Expression
     -- execute [1], and do nothing with the result
     | ThrowawayResult Expression
     deriving (Show, Eq)

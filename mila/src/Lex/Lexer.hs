@@ -133,6 +133,9 @@ continue = spaces >> string "continue" >> return Continue
 exit :: Parsec String () Token
 exit = spaces >> string "exit" >> return Exit
 
+assert :: Parsec String () Token
+assert = spaces >> string "assert" >> return Assert
+
 assignment :: Parsec String () Token
 assignment = spaces >> string ":=" >> return Assignment
 
